@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -12,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/mvdan/xurls"
@@ -23,7 +25,12 @@ var (
 	BaseDownloadPath string
 	RegexpUrlTwitter *regexp.Regexp
 	RegexpUrlTistory *regexp.Regexp
+	RegexpUrlGfycat  *regexp.Regexp
 )
+
+type GfycatObject struct {
+	GfyItem map[string]string
+}
 
 func main() {
 	var err error
@@ -64,6 +71,12 @@ func main() {
 		fmt.Println("Regexp error", err)
 		return
 	}
+	RegexpUrlGfycat, err = regexp.Compile(
+		`^http(s?):\/\/gfycat\.com\/[A-Za-z]+$`)
+	if err != nil {
+		fmt.Println("Regexp error", err)
+		return
+	}
 
 	dg, err := discordgo.New(
 		cfg.Section("auth").Key("email").String(),
@@ -99,14 +112,20 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			if RegexpUrlTwitter.MatchString(iFoundUrl) {
 				err := handleTwitterUrl(iFoundUrl, downloadPath)
 				if err != nil {
-					fmt.Println("Twitter url failed,", iFoundUrl, ",", err)
+					fmt.Println("twitter url failed,", iFoundUrl, ",", err)
 					continue
 				}
 				// Tistory url?
 			} else if RegexpUrlTistory.MatchString(iFoundUrl) {
 				err := handleTistoryUrl(iFoundUrl, downloadPath)
 				if err != nil {
-					fmt.Println("Tistory url failed,", iFoundUrl, ",", err)
+					fmt.Println("tistory url failed,", iFoundUrl, ",", err)
+					continue
+				}
+			} else if RegexpUrlGfycat.MatchString(iFoundUrl) {
+				err := handleGfycatUrl(iFoundUrl, downloadPath)
+				if err != nil {
+					fmt.Println("gfycat url failed,", iFoundUrl, ",", err)
 					continue
 				}
 			} else {
@@ -121,7 +140,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 func handleTwitterUrl(url string, folder string) error {
 	parts := strings.Split(url, ":")
 	if len(parts) < 2 {
-		errors.New("unable to format twitter url")
+		return errors.New("unable to parse twitter url")
 	} else {
 		downloadFromUrl("https:"+parts[1]+":orig", path.Base(parts[1]), folder)
 	}
@@ -132,6 +151,35 @@ func handleTistoryUrl(url string, folder string) error {
 	url = strings.Replace(url, "/image/", "/original/", -1)
 	downloadFromUrl(url, getContentDispositionFilename(url), folder)
 	return nil
+}
+
+func handleGfycatUrl(url string, folder string) error {
+	parts := strings.Split(url, "/")
+	if len(parts) < 3 {
+		return errors.New("unable to parse gfycat url")
+	} else {
+		gfycatId := parts[len(parts)-1]
+		gfycatObject := new(GfycatObject)
+		getJson("https://gfycat.com/cajax/get/"+gfycatId, gfycatObject)
+		gfycatUrl := gfycatObject.GfyItem["gifUrl"]
+		if url == "" {
+			return errors.New("failed to read response from gfycat")
+		} else {
+			downloadFromUrl(
+				gfycatUrl, getContentDispositionFilename(gfycatUrl), folder)
+		}
+	}
+	return nil
+}
+
+func getJson(url string, target interface{}) error {
+	r, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	return json.NewDecoder(r.Body).Decode(target)
 }
 
 func getContentDispositionFilename(dUrl string) string {
@@ -201,5 +249,5 @@ func downloadFromUrl(url string, filename string, path string) {
 		return
 	}
 
-	fmt.Printf("Downloaded url: %s to %s\n", url, completePath)
+	fmt.Printf("[%s] Downloaded url: %s to %s\n", time.Now().Format(time.Stamp), url, completePath)
 }
