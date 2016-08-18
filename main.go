@@ -10,7 +10,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-
 	"strconv"
 	"strings"
 
@@ -20,9 +19,6 @@ import (
 )
 
 var (
-	Email            string
-	Password         string
-	Token            string
 	ChannelWhitelist map[string]string
 	BaseDownloadPath string
 	RegexpUrlTwitter *regexp.Regexp
@@ -57,7 +53,7 @@ func main() {
 	ChannelWhitelist = cfg.Section("channels").KeysHash()
 
 	RegexpUrlTwitter, err = regexp.Compile(
-		`^http(s?):\/\/pbs\.twimg\.com\/media\/[a-zA-Z]+\.jpg((\:[a-z]+)?)$`)
+		`^http(s?):\/\/pbs\.twimg\.com\/media\/[a-zA-Z0-9]+\.jpg((\:[a-z]+)?)$`)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
@@ -195,7 +191,7 @@ func downloadFromUrl(url string, filename string, path string) {
 	contentType := http.DetectContentType(bodyOfResp)
 	contentTypeParts := strings.Split(contentType, "/")
 	if contentTypeParts[0] != "image" {
-		fmt.Println("No image found", url)
+		fmt.Println("No image found at", url)
 		return
 	}
 
