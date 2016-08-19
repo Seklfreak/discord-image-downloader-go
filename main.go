@@ -113,7 +113,7 @@ func main() {
 		fmt.Println("error obtaining account details,", err)
 	}
 
-	fmt.Printf("Client is now connected as %s (ID: %s). Press CTRL-C to exit.",
+	fmt.Printf("Client is now connected as %s (ID: %s). Press CTRL-C to exit.\n",
 		u.Username, u.ID)
 
 	err = dg.UpdateStatus(1, "")
