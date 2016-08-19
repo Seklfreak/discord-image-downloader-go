@@ -30,7 +30,7 @@ var (
 )
 
 const (
-	VERSION     string = "1.3"
+	VERSION     string = "1.4"
 	RELEASE_URL string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 )
 
