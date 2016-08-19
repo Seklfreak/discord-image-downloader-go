@@ -102,7 +102,13 @@ func main() {
 		return
 	}
 
-	fmt.Println("Client is now connected. Press CTRL-C to exit.")
+	u, err := dg.User("@me")
+	if err != nil {
+		fmt.Println("error obtaining account details,", err)
+	}
+
+	fmt.Printf("Client is now connected as %s (ID: %s). Press CTRL-C to exit.",
+		u.Username, u.ID)
 
 	err = dg.UpdateStatus(1, "")
 	if err != nil {
