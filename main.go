@@ -60,7 +60,7 @@ func main() {
 	ChannelWhitelist = cfg.Section("channels").KeysHash()
 
 	RegexpUrlTwitter, err = regexp.Compile(
-		`^http(s?):\/\/pbs\.twimg\.com\/media\/[a-zA-Z0-9]+\.jpg((\:[a-z]+)?)$`)
+		`^http(s?):\/\/pbs\.twimg\.com\/media\/[^\./]+\.jpg((\:[a-z]+)?)$`)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
