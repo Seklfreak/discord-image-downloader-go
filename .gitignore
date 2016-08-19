@@ -27,3 +27,4 @@ _testmain.go
 *.out
 
 config.ini
+crossbuild.bat

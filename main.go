@@ -95,6 +95,12 @@ func main() {
 	}
 
 	fmt.Println("Client is now connected. Press CTRL-C to exit.")
+
+	err = dg.UpdateStatus(1, "")
+	if err != nil {
+		fmt.Println("error setting idle status,", err)
+	}
+
 	// keep program running until CTRL-C is pressed.
 	<-make(chan struct{})
 	return
