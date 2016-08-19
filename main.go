@@ -48,8 +48,9 @@ func main() {
 		cfg = ini.Empty()
 	}
 
-	if !cfg.Section("auth").HasKey("email") ||
-		!cfg.Section("auth").HasKey("password") {
+	if (!cfg.Section("auth").HasKey("email") ||
+		!cfg.Section("auth").HasKey("password")) &&
+		!cfg.Section("auth").HasKey("token") {
 		cfg.Section("auth").NewKey("email", "your@email.com")
 		cfg.Section("auth").NewKey("password", "yourpassword")
 		cfg.Section("channels").NewKey("channelid1", "C:\\full\\path\\1")
@@ -86,9 +87,14 @@ func main() {
 		return
 	}
 
-	dg, err := discordgo.New(
-		cfg.Section("auth").Key("email").String(),
-		cfg.Section("auth").Key("password").String())
+	var dg *discordgo.Session
+	if cfg.Section("auth").HasKey("token") {
+		dg, err = discordgo.New(cfg.Section("auth").Key("token").String())
+	} else {
+		dg, err = discordgo.New(
+			cfg.Section("auth").Key("email").String(),
+			cfg.Section("auth").Key("password").String())
+	}
 	if err != nil {
 		fmt.Println("error creating Discord session,", err)
 		return
