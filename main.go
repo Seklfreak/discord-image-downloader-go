@@ -21,11 +21,12 @@ import (
 )
 
 var (
-	ChannelWhitelist map[string]string
-	BaseDownloadPath string
-	RegexpUrlTwitter *regexp.Regexp
-	RegexpUrlTistory *regexp.Regexp
-	RegexpUrlGfycat  *regexp.Regexp
+	ChannelWhitelist   map[string]string
+	BaseDownloadPath   string
+	RegexpUrlTwitter   *regexp.Regexp
+	RegexpUrlTistory   *regexp.Regexp
+	RegexpUrlGfycat    *regexp.Regexp
+	RegexpUrlInstagram *regexp.Regexp
 )
 
 const (
@@ -82,6 +83,12 @@ func main() {
 	}
 	RegexpUrlGfycat, err = regexp.Compile(
 		`^http(s?):\/\/gfycat\.com\/[A-Za-z]+$`)
+	if err != nil {
+		fmt.Println("Regexp error", err)
+		return
+	}
+	RegexpUrlInstagram, err = regexp.Compile(
+		`^http(s?):\/\/(www\.)?instagram\.com\/p\/[^/]+\/(\?[^/]+)?$`)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
@@ -154,10 +161,16 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 					fmt.Println("gfycat url failed,", iFoundUrl, ",", err)
 					continue
 				}
+			} else if RegexpUrlInstagram.MatchString(iFoundUrl) {
+				err := handleInstagramUrl(iFoundUrl, downloadPath)
+				if err != nil {
+					fmt.Println("instagram url failed,", iFoundUrl, ",", err)
+					continue
+				}
 			} else {
 				// Any other url
 				downloadFromUrl(iFoundUrl,
-					getContentDispositionFilename(iFoundUrl), downloadPath)
+					"", downloadPath)
 			}
 		}
 	}
@@ -168,14 +181,14 @@ func handleTwitterUrl(url string, folder string) error {
 	if len(parts) < 2 {
 		return errors.New("unable to parse twitter url")
 	} else {
-		downloadFromUrl("https:"+parts[1]+":orig", path.Base(parts[1]), folder)
+		downloadFromUrl("https:"+parts[1]+":orig", filenameFromUrl(parts[1]), folder)
 	}
 	return nil
 }
 
 func handleTistoryUrl(url string, folder string) error {
 	url = strings.Replace(url, "/image/", "/original/", -1)
-	downloadFromUrl(url, getContentDispositionFilename(url), folder)
+	downloadFromUrl(url, "", folder)
 	return nil
 }
 
@@ -192,9 +205,17 @@ func handleGfycatUrl(url string, folder string) error {
 			return errors.New("failed to read response from gfycat")
 		} else {
 			downloadFromUrl(
-				gfycatUrl, getContentDispositionFilename(gfycatUrl), folder)
+				gfycatUrl, "", folder)
 		}
 	}
+	return nil
+}
+
+func handleInstagramUrl(url string, folder string) error {
+	afterLastSlash := strings.LastIndex(url, "/")
+	mediaUrl := url[:afterLastSlash] + strings.Replace(url[afterLastSlash:], "/", "/media/?size=l", -1)
+	mediaUrl = strings.Replace(mediaUrl, "?taken-by=", "&taken-by", -1)
+	downloadFromUrl(mediaUrl, "", folder)
 	return nil
 }
 
@@ -208,32 +229,39 @@ func getJson(url string, target interface{}) error {
 	return json.NewDecoder(r.Body).Decode(target)
 }
 
-func getContentDispositionFilename(dUrl string) string {
-	resp, err := http.Head(dUrl)
-	if err != nil {
-		return path.Base(dUrl)
-	}
-	for key, iHeader := range resp.Header {
-		if key == "Content-Disposition" {
-			parts := strings.Split(iHeader[0], "\"")
-			if len(parts) == 3 {
-				filename, err := url.QueryUnescape(parts[1])
-				if err != nil {
-					return parts[1]
-				} else {
-					return filename
-				}
-			}
-		}
-	}
-	return path.Base(dUrl)
+func filenameFromUrl(dUrl string) string {
+	base := path.Base(dUrl)
+	parts := strings.Split(base, "?")
+	return parts[0]
 }
 
-func downloadFromUrl(url string, filename string, path string) {
+func downloadFromUrl(dUrl string, filename string, path string) {
 	err := os.MkdirAll(path, 755)
 	if err != nil {
 		fmt.Println("Error while creating folder", path, "-", err)
 		return
+	}
+
+	response, err := http.Get(dUrl)
+	if err != nil {
+		fmt.Println("Error while downloading", dUrl, "-", err)
+		return
+	}
+	defer response.Body.Close()
+
+	if filename == "" {
+		filename = filenameFromUrl(response.Request.URL.String())
+		for key, iHeader := range response.Header {
+			if key == "Content-Disposition" {
+				parts := strings.Split(iHeader[0], "\"")
+				if len(parts) == 3 {
+					newFilename, err := url.QueryUnescape(parts[1])
+					if err == nil {
+						filename = newFilename
+					}
+				}
+			}
+		}
 	}
 
 	completePath := path + string(os.PathSeparator) + filename
@@ -250,30 +278,23 @@ func downloadFromUrl(url string, filename string, path string) {
 		}
 	}
 
-	response, err := http.Get(url)
-	if err != nil {
-		fmt.Println("Error while downloading", url, "-", err)
-		return
-	}
-	defer response.Body.Close()
-
 	bodyOfResp, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		fmt.Println("Could not read response", url, "-", err)
+		fmt.Println("Could not read response", dUrl, "-", err)
 		return
 	}
 	contentType := http.DetectContentType(bodyOfResp)
 	contentTypeParts := strings.Split(contentType, "/")
 	if contentTypeParts[0] != "image" {
-		fmt.Println("No image found at", url)
+		fmt.Println("No image found at", dUrl)
 		return
 	}
 
 	err = ioutil.WriteFile(completePath, bodyOfResp, 0644)
 	if err != nil {
-		fmt.Println("Error while writing to disk", url, "-", err)
+		fmt.Println("Error while writing to disk", dUrl, "-", err)
 		return
 	}
 
-	fmt.Printf("[%s] Downloaded url: %s to %s\n", time.Now().Format(time.Stamp), url, completePath)
+	fmt.Printf("[%s] Downloaded url: %s to %s\n", time.Now().Format(time.Stamp), dUrl, completePath)
 }
