@@ -28,11 +28,19 @@ var (
 	RegexpUrlGfycat  *regexp.Regexp
 )
 
+const (
+	VERSION     string = "1.3"
+	RELEASE_URL string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
+)
+
 type GfycatObject struct {
 	GfyItem map[string]string
 }
 
 func main() {
+	fmt.Printf("discord-image-downloader-go version %s\n", VERSION)
+	fmt.Printf("Go to %s to get the latest release.\n", RELEASE_URL)
+
 	var err error
 	cfg, err := ini.Load("config.ini")
 	if err != nil {
