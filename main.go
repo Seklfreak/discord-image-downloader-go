@@ -21,22 +21,30 @@ import (
 )
 
 var (
-	ChannelWhitelist   map[string]string
-	BaseDownloadPath   string
-	RegexpUrlTwitter   *regexp.Regexp
-	RegexpUrlTistory   *regexp.Regexp
-	RegexpUrlGfycat    *regexp.Regexp
-	RegexpUrlInstagram *regexp.Regexp
-	RegexpUrlImgurGifv *regexp.Regexp
+	ChannelWhitelist    map[string]string
+	BaseDownloadPath    string
+	RegexpUrlTwitter    *regexp.Regexp
+	RegexpUrlTistory    *regexp.Regexp
+	RegexpUrlGfycat     *regexp.Regexp
+	RegexpUrlInstagram  *regexp.Regexp
+	RegexpUrlImgurGifv  *regexp.Regexp
+	RegexpUrlImgurAlbum *regexp.Regexp
 )
 
 const (
-	VERSION     string = "1.5"
-	RELEASE_URL string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
+	VERSION         string = "1.6"
+	RELEASE_URL     string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
+	IMGUR_CLIENT_ID string = "a39473314df3f59"
 )
 
 type GfycatObject struct {
 	GfyItem map[string]string
+}
+
+type ImgurAlbumObject struct {
+	Data []struct {
+		Link string
+	}
 }
 
 func main() {
@@ -96,6 +104,12 @@ func main() {
 	}
 	RegexpUrlImgurGifv, err = regexp.Compile(
 		`^http(s?):\/\/i\.imgur\.com\/[A-Za-z0-9]+\.gifv$`)
+	if err != nil {
+		fmt.Println("Regexp error", err)
+		return
+	}
+	RegexpUrlImgurAlbum, err = regexp.Compile(
+		`^http(s?):\/\/imgur\.com\/a\/[A-Za-z0-9]+$`)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
@@ -180,6 +194,12 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 					fmt.Println("imgur gifv url failed, ", iFoundUrl, ",", err)
 					continue
 				}
+			} else if RegexpUrlImgurAlbum.MatchString(iFoundUrl) {
+				err := handleImgurAlbumUrl(iFoundUrl, downloadPath)
+				if err != nil {
+					fmt.Println("imgur album url failed, ", iFoundUrl, ",", err)
+					continue
+				}
 			} else {
 				// Any other url
 				downloadFromUrl(iFoundUrl,
@@ -237,11 +257,41 @@ func handleImgurGifvUrl(url string, folder string) error {
 	url = strings.Replace(url, ".gifv", "", -1)
 	downloadFromUrl(url, "", folder)
 	return nil
+}
 
+func handleImgurAlbumUrl(url string, folder string) error {
+	afterLastSlash := strings.LastIndex(url, "/")
+	albumId := url[afterLastSlash+1:]
+	headers := make(map[string]string)
+	headers["Authorization"] = "Client-ID " + IMGUR_CLIENT_ID
+	imgurAlbumObject := new(ImgurAlbumObject)
+	getJsonWithHeaders("https://api.imgur.com/3/album/"+albumId+"/images", imgurAlbumObject, headers)
+	fmt.Printf("[%s] Found imgur album url: %s\n", time.Now().Format(time.Stamp), url)
+	for _, v := range imgurAlbumObject.Data {
+		downloadFromUrl(v.Link, "", folder)
+	}
+	return nil
 }
 
 func getJson(url string, target interface{}) error {
 	r, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	return json.NewDecoder(r.Body).Decode(target)
+}
+
+func getJsonWithHeaders(url string, target interface{}, headers map[string]string) error {
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", url, nil)
+
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	r, err := client.Do(req)
 	if err != nil {
 		return err
 	}
