@@ -33,7 +33,7 @@ var (
 )
 
 const (
-	VERSION         string = "1.7"
+	VERSION         string = "1.7.1"
 	RELEASE_URL     string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID string = "a39473314df3f59"
 )
@@ -371,6 +371,7 @@ func downloadFromUrl(dUrl string, filename string, path string) {
 			}
 			i = i + 1
 		}
+		fmt.Printf("[%s] Saving possible duplicate (filenames match): %s to %s\n", time.Now().Format(time.Stamp), tmpPath, completePath)
 	}
 
 	bodyOfResp, err := ioutil.ReadAll(response.Body)
