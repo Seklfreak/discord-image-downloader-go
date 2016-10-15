@@ -21,18 +21,19 @@ import (
 )
 
 var (
-	ChannelWhitelist    map[string]string
-	BaseDownloadPath    string
-	RegexpUrlTwitter    *regexp.Regexp
-	RegexpUrlTistory    *regexp.Regexp
-	RegexpUrlGfycat     *regexp.Regexp
-	RegexpUrlInstagram  *regexp.Regexp
-	RegexpUrlImgurGifv  *regexp.Regexp
-	RegexpUrlImgurAlbum *regexp.Regexp
+	ChannelWhitelist     map[string]string
+	BaseDownloadPath     string
+	RegexpUrlTwitter     *regexp.Regexp
+	RegexpUrlTistory     *regexp.Regexp
+	RegexpUrlGfycat      *regexp.Regexp
+	RegexpUrlInstagram   *regexp.Regexp
+	RegexpUrlImgurGifv   *regexp.Regexp
+	RegexpUrlImgurAlbum  *regexp.Regexp
+	RegexpUrlGoogleDrive *regexp.Regexp
 )
 
 const (
-	VERSION         string = "1.6"
+	VERSION         string = "1.7"
 	RELEASE_URL     string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID string = "a39473314df3f59"
 )
@@ -110,6 +111,12 @@ func main() {
 	}
 	RegexpUrlImgurAlbum, err = regexp.Compile(
 		`^http(s?):\/\/imgur\.com\/a\/[A-Za-z0-9]+$`)
+	if err != nil {
+		fmt.Println("Regexp error", err)
+		return
+	}
+	RegexpUrlGoogleDrive, err = regexp.Compile(
+		`^http(s?):\/\/drive\.google\.com\/file\/d\/[^/]+\/view$`)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
@@ -200,6 +207,12 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 					fmt.Println("imgur album url failed, ", iFoundUrl, ",", err)
 					continue
 				}
+			} else if RegexpUrlGoogleDrive.MatchString(iFoundUrl) {
+				err := handleGoogleDriveUrl(iFoundUrl, downloadPath)
+				if err != nil {
+					fmt.Println("google drive album url failed, ", iFoundUrl, ",", err)
+					continue
+				}
 			} else {
 				// Any other url
 				downloadFromUrl(iFoundUrl,
@@ -269,6 +282,17 @@ func handleImgurAlbumUrl(url string, folder string) error {
 	fmt.Printf("[%s] Found imgur album url: %s\n", time.Now().Format(time.Stamp), url)
 	for _, v := range imgurAlbumObject.Data {
 		downloadFromUrl(v.Link, "", folder)
+	}
+	return nil
+}
+
+func handleGoogleDriveUrl(url string, folder string) error {
+	parts := strings.Split(url, "/")
+	if len(parts) != 7 {
+		return errors.New("unable to parse google drive url")
+	} else {
+		fileId := parts[len(parts)-2]
+		downloadFromUrl("https://drive.google.com/uc?export=download&id="+fileId, "", folder)
 	}
 	return nil
 }
