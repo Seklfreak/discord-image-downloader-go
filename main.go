@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/net/html"
+
 	"github.com/bwmarrin/discordgo"
 	"github.com/mvdan/xurls"
 	"gopkg.in/ini.v1"
@@ -33,7 +35,7 @@ var (
 )
 
 const (
-	VERSION         string = "1.7.1"
+	VERSION         string = "1.8"
 	RELEASE_URL     string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID string = "a39473314df3f59"
 )
@@ -257,7 +259,47 @@ func handleGfycatUrl(url string, folder string) error {
 	return nil
 }
 
+func getInstagramVideoUrl(url string) string {
+	resp, _ := http.Get(url)
+
+	defer resp.Body.Close()
+	z := html.NewTokenizer(resp.Body)
+
+	for {
+		tt := z.Next()
+		switch {
+		case tt == html.ErrorToken:
+			return ""
+		}
+		if tt == html.StartTagToken || tt == html.SelfClosingTagToken {
+			t := z.Token()
+			if t.Data == "meta" {
+				for _, a := range t.Attr {
+					if a.Key == "property" {
+						if a.Val == "og:video" || a.Val == "og:video:secure_url" {
+							for _, at := range t.Attr {
+								if at.Key == "content" {
+									return at.Val
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+}
+
 func handleInstagramUrl(url string, folder string) error {
+	// if instagram video
+	videoUrl := getInstagramVideoUrl(url)
+	if videoUrl != "" {
+		downloadFromUrl(videoUrl, "", folder)
+		return nil
+	}
+
+	// if instagram picture
 	afterLastSlash := strings.LastIndex(url, "/")
 	mediaUrl := url[:afterLastSlash] + strings.Replace(url[afterLastSlash:], "/", "/media/?size=l", -1)
 	mediaUrl = strings.Replace(mediaUrl, "?taken-by=", "&taken-by", -1)
@@ -381,8 +423,8 @@ func downloadFromUrl(dUrl string, filename string, path string) {
 	}
 	contentType := http.DetectContentType(bodyOfResp)
 	contentTypeParts := strings.Split(contentType, "/")
-	if contentTypeParts[0] != "image" {
-		fmt.Println("No image found at", dUrl)
+	if contentTypeParts[0] != "image" && contentTypeParts[0] != "video" {
+		fmt.Println("No image or video found at", dUrl)
 		return
 	}
 
