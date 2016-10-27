@@ -35,7 +35,7 @@ var (
 )
 
 const (
-	VERSION         string = "1.8"
+	VERSION         string = "1.8.1"
 	RELEASE_URL     string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID string = "a39473314df3f59"
 )
@@ -249,6 +249,10 @@ func handleGfycatUrl(url string, folder string) error {
 		gfycatObject := new(GfycatObject)
 		getJson("https://gfycat.com/cajax/get/"+gfycatId, gfycatObject)
 		gfycatUrl := gfycatObject.GfyItem["gifUrl"]
+		if gfycatUrl == "" {
+			gfycatUrl = gfycatObject.GfyItem["mp4Url"]
+			fmt.Println("fallback to gfycat mp4")
+		}
 		if url == "" {
 			return errors.New("failed to read response from gfycat")
 		} else {
