@@ -35,7 +35,7 @@ var (
 )
 
 const (
-	VERSION         string = "1.8.1"
+	VERSION         string = "1.8.2"
 	RELEASE_URL     string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID string = "a39473314df3f59"
 )
@@ -66,6 +66,7 @@ func main() {
 		!cfg.Section("auth").HasKey("token") {
 		cfg.Section("auth").NewKey("email", "your@email.com")
 		cfg.Section("auth").NewKey("password", "yourpassword")
+		cfg.Section("general").NewKey("skip edits", "true")
 		cfg.Section("channels").NewKey("channelid1", "C:\\full\\path\\1")
 		cfg.Section("channels").NewKey("channelid2", "C:\\full\\path\\2")
 		cfg.Section("channels").NewKey("channelid3", "C:\\full\\path\\3")
@@ -139,6 +140,12 @@ func main() {
 
 	dg.AddHandler(messageCreate)
 
+	if cfg.Section("general").HasKey("skip edits") {
+		if cfg.Section("general").Key("skip edits").MustBool() == false {
+			dg.AddHandler(messageUpdate)
+		}
+	}
+
 	err = dg.Open()
 	if err != nil {
 		fmt.Println("error opening connection,", err)
@@ -164,6 +171,14 @@ func main() {
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	handleDiscordMessage(m.Message)
+}
+
+func messageUpdate(s *discordgo.Session, m *discordgo.MessageUpdate) {
+	handleDiscordMessage(m.Message)
+}
+
+func handleDiscordMessage(m *discordgo.Message) {
 	if folderName, ok := ChannelWhitelist[m.ChannelID]; ok {
 		downloadPath := folderName
 		for _, iAttachment := range m.Attachments {
