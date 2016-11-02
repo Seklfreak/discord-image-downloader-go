@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"mime"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -409,12 +409,10 @@ func downloadFromUrl(dUrl string, filename string, path string) {
 		filename = filenameFromUrl(response.Request.URL.String())
 		for key, iHeader := range response.Header {
 			if key == "Content-Disposition" {
-				parts := strings.Split(iHeader[0], "\"")
-				if len(parts) == 3 {
-					newFilename, err := url.QueryUnescape(parts[1])
-					if err == nil {
-						filename = newFilename
-					}
+				_, params, err := mime.ParseMediaType(iHeader[0])
+				newFilename := params["filename"]
+				if err == nil && newFilename != "" {
+					filename = newFilename
 				}
 			}
 		}
