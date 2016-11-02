@@ -32,10 +32,12 @@ var (
 	RegexpUrlImgurGifv   *regexp.Regexp
 	RegexpUrlImgurAlbum  *regexp.Regexp
 	RegexpUrlGoogleDrive *regexp.Regexp
+	ImagesDownloaded     int
+	dg                   *discordgo.Session
 )
 
 const (
-	VERSION         string = "1.8.2"
+	VERSION         string = "1.9"
 	RELEASE_URL     string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID string = "a39473314df3f59"
 )
@@ -125,7 +127,6 @@ func main() {
 		return
 	}
 
-	var dg *discordgo.Session
 	if cfg.Section("auth").HasKey("token") {
 		dg, err = discordgo.New(cfg.Section("auth").Key("token").String())
 	} else {
@@ -452,4 +453,10 @@ func downloadFromUrl(dUrl string, filename string, path string) {
 	}
 
 	fmt.Printf("[%s] Downloaded url: %s to %s\n", time.Now().Format(time.Stamp), dUrl, completePath)
+	updateDiscordStatus()
+}
+
+func updateDiscordStatus() {
+	ImagesDownloaded++
+	dg.UpdateStatus(0, fmt.Sprintf("%d pictures downloaded", ImagesDownloaded))
 }
