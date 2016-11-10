@@ -37,7 +37,7 @@ var (
 )
 
 const (
-	VERSION         string = "1.9"
+	VERSION         string = "1.9.1"
 	RELEASE_URL     string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID string = "a39473314df3f59"
 )
@@ -85,7 +85,7 @@ func main() {
 	ChannelWhitelist = cfg.Section("channels").KeysHash()
 
 	RegexpUrlTwitter, err = regexp.Compile(
-		`^http(s?):\/\/pbs\.twimg\.com\/media\/[^\./]+\.jpg((\:[a-z]+)?)$`)
+		`^http(s?):\/\/pbs\.twimg\.com\/media\/[^\./]+\.(jpg|png)((\:[a-z]+)?)$`)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
@@ -458,5 +458,5 @@ func downloadFromUrl(dUrl string, filename string, path string) {
 
 func updateDiscordStatus() {
 	ImagesDownloaded++
-	dg.UpdateStatus(0, fmt.Sprintf("%d pictures downloaded", ImagesDownloaded))
+	dg.UpdateStatus(0, fmt.Sprintf("%d pictures downloaded (v%s)", ImagesDownloaded, VERSION))
 }
