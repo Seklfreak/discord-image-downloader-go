@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -37,7 +38,7 @@ var (
 )
 
 const (
-	VERSION         string = "1.9.1"
+	VERSION         string = "1.9.2"
 	RELEASE_URL     string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID string = "a39473314df3f59"
 )
@@ -411,9 +412,14 @@ func downloadFromUrl(dUrl string, filename string, path string) {
 		for key, iHeader := range response.Header {
 			if key == "Content-Disposition" {
 				_, params, err := mime.ParseMediaType(iHeader[0])
-				newFilename := params["filename"]
-				if err == nil && newFilename != "" {
-					filename = newFilename
+				if err == nil {
+					newFilename, err := url.QueryUnescape(params["filename"])
+					if err != nil {
+						newFilename = params["filename"]
+					}
+					if newFilename != "" {
+						filename = newFilename
+					}
 				}
 			}
 		}
