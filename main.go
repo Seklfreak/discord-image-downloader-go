@@ -30,7 +30,7 @@ var (
 	RegexpUrlTistory     *regexp.Regexp
 	RegexpUrlGfycat      *regexp.Regexp
 	RegexpUrlInstagram   *regexp.Regexp
-	RegexpUrlImgurGifv   *regexp.Regexp
+	RegexpUrlImgurSingle *regexp.Regexp
 	RegexpUrlImgurAlbum  *regexp.Regexp
 	RegexpUrlGoogleDrive *regexp.Regexp
 	ImagesDownloaded     int
@@ -38,7 +38,7 @@ var (
 )
 
 const (
-	VERSION         string = "1.9.2"
+	VERSION         string = "1.9.3"
 	RELEASE_URL     string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID string = "a39473314df3f59"
 )
@@ -109,8 +109,8 @@ func main() {
 		fmt.Println("Regexp error", err)
 		return
 	}
-	RegexpUrlImgurGifv, err = regexp.Compile(
-		`^http(s?):\/\/i\.imgur\.com\/[A-Za-z0-9]+\.gifv$`)
+	RegexpUrlImgurSingle, err = regexp.Compile(
+		`^http(s?):\/\/(i\.)?imgur\.com\/[A-Za-z0-9]+(\.gifv)?$`)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
@@ -214,10 +214,10 @@ func handleDiscordMessage(m *discordgo.Message) {
 					fmt.Println("instagram url failed,", iFoundUrl, ",", err)
 					continue
 				}
-			} else if RegexpUrlImgurGifv.MatchString(iFoundUrl) {
-				err := handleImgurGifvUrl(iFoundUrl, downloadPath)
+			} else if RegexpUrlImgurSingle.MatchString(iFoundUrl) {
+				err := handleImgurSingleUrl(iFoundUrl, downloadPath)
 				if err != nil {
-					fmt.Println("imgur gifv url failed, ", iFoundUrl, ",", err)
+					fmt.Println("imgur single url failed, ", iFoundUrl, ",", err)
 					continue
 				}
 			} else if RegexpUrlImgurAlbum.MatchString(iFoundUrl) {
@@ -328,8 +328,8 @@ func handleInstagramUrl(url string, folder string) error {
 	return nil
 }
 
-func handleImgurGifvUrl(url string, folder string) error {
-	url = strings.Replace(url, "i.imgur.com/", "imgur.com/download/", -1)
+func handleImgurSingleUrl(url string, folder string) error {
+	url = strings.Replace(url, "imgur.com/", "imgur.com/download/", -1)
 	url = strings.Replace(url, ".gifv", "", -1)
 	downloadFromUrl(url, "", folder)
 	return nil
