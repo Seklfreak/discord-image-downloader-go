@@ -1,4 +1,5 @@
 # discord-image-downloader-go
+[![Go Report Card](https://goreportcard.com/badge/github.com/Seklfreak/discord-image-downloader-go)](https://goreportcard.com/report/github.com/Seklfreak/discord-image-downloader-go) [![Build Status](https://travis-ci.org/Seklfreak/discord-image-downloader-go.svg?branch=master)](https://travis-ci.org/Seklfreak/discord-image-downloader-go)
 
 This is a simple tool which downloads pictures (and instagram videos) posted in discord channels of your choice to a local folder. The tool only handles links posted while it is running, you have to keep it running the whole time. It handles various sources like twitter differently to make sure to download the best quality available. It is written in go and the code is very ugly.
 
