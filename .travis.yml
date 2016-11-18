@@ -1,0 +1,12 @@
+language: go
+go:
+  - master
+  - tip
+install:
+    - go get -v .
+    - go get -v github.com/golang/lint/golint
+script:
+    - diff <(gofmt -d .) <(echo -n)
+    - go vet -x ./...
+    - golint ./...
+    - go test -v -race ./...
