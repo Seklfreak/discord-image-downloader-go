@@ -16,31 +16,43 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/net/html"
-
+	"github.com/PuerkitoBio/goquery"
 	"github.com/bwmarrin/discordgo"
 	"github.com/mvdan/xurls"
+	"golang.org/x/net/html"
 	"gopkg.in/ini.v1"
 )
 
 var (
-	ChannelWhitelist     map[string]string
-	BaseDownloadPath     string
-	RegexpUrlTwitter     *regexp.Regexp
-	RegexpUrlTistory     *regexp.Regexp
-	RegexpUrlGfycat      *regexp.Regexp
-	RegexpUrlInstagram   *regexp.Regexp
-	RegexpUrlImgurSingle *regexp.Regexp
-	RegexpUrlImgurAlbum  *regexp.Regexp
-	RegexpUrlGoogleDrive *regexp.Regexp
-	ImagesDownloaded     int
-	dg                   *discordgo.Session
+	ChannelWhitelist             map[string]string
+	BaseDownloadPath             string
+	RegexpUrlTwitter             *regexp.Regexp
+	RegexpUrlTistory             *regexp.Regexp
+	RegexpUrlTistoryWithCDN      *regexp.Regexp
+	RegexpUrlGfycat              *regexp.Regexp
+	RegexpUrlInstagram           *regexp.Regexp
+	RegexpUrlImgurSingle         *regexp.Regexp
+	RegexpUrlImgurAlbum          *regexp.Regexp
+	RegexpUrlGoogleDrive         *regexp.Regexp
+	RegexpUrlPossibleTistorySite *regexp.Regexp
+	ImagesDownloaded             int
+	dg                           *discordgo.Session
+	DownloadTistorySites         bool
 )
 
 const (
-	VERSION         string = "1.9.3"
-	RELEASE_URL     string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
-	IMGUR_CLIENT_ID string = "a39473314df3f59"
+	VERSION                          string = "1.10"
+	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
+	IMGUR_CLIENT_ID                  string = "a39473314df3f59"
+	REGEXP_URL_TWITTER               string = `^http(s?):\/\/pbs\.twimg\.com\/media\/[^\./]+\.(jpg|png)((\:[a-z]+)?)$`
+	REGEXP_URL_TISTORY               string = `^http(s?):\/\/[a-z0-9]+\.uf\.tistory\.com\/(image|original)\/[A-Z0-9]+$`
+	REGEXP_URL_TISTORY_WITH_CDN      string = `^http(s)?:\/\/[0-9a-z]+.daumcdn.net\/[a-z]+\/[a-zA-Z0-9\.]+\/\?scode=mtistory&fname=http(s?)%3A%2F%2F[a-z0-9]+\.uf\.tistory\.com%2F(image|original)%2F[A-Z0-9]+$`
+	REGEXP_URL_GFYCAT                string = `^http(s?):\/\/gfycat\.com\/[A-Za-z]+$`
+	REGEXP_URL_INSTAGRAM             string = `^http(s?):\/\/(www\.)?instagram\.com\/p\/[^/]+\/(\?[^/]+)?$`
+	REGEXP_URL_IMGUR_SINGLE          string = `^http(s?):\/\/(i\.)?imgur\.com\/[A-Za-z0-9]+(\.gifv)?$`
+	REGEXP_URL_IMGUR_ALBUM           string = `^http(s?):\/\/imgur\.com\/a\/[A-Za-z0-9]+$`
+	REGEXP_URL_GOOGLEDRIVE           string = `^http(s?):\/\/drive\.google\.com\/file\/d\/[^/]+\/view$`
+	REGEXP_URL_POSSIBLE_TISTORY_SITE string = `http(s)?:\/\/[0-9a-zA-Z\.]+\/(m\/)?[0-9]+`
 )
 
 type GfycatObject struct {
@@ -70,6 +82,7 @@ func main() {
 		cfg.Section("auth").NewKey("email", "your@email.com")
 		cfg.Section("auth").NewKey("password", "yourpassword")
 		cfg.Section("general").NewKey("skip edits", "true")
+		cfg.Section("general").NewKey("download tistory sites", "false")
 		cfg.Section("channels").NewKey("channelid1", "C:\\full\\path\\1")
 		cfg.Section("channels").NewKey("channelid2", "C:\\full\\path\\2")
 		cfg.Section("channels").NewKey("channelid3", "C:\\full\\path\\3")
@@ -85,44 +98,47 @@ func main() {
 
 	ChannelWhitelist = cfg.Section("channels").KeysHash()
 
-	RegexpUrlTwitter, err = regexp.Compile(
-		`^http(s?):\/\/pbs\.twimg\.com\/media\/[^\./]+\.(jpg|png)((\:[a-z]+)?)$`)
+	RegexpUrlTwitter, err = regexp.Compile(REGEXP_URL_TWITTER)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
 	}
-	RegexpUrlTistory, err = regexp.Compile(
-		`^http(s?):\/\/[a-z0-9]+\.uf\.tistory\.com\/(image|original)\/[A-Z0-9]+$`)
+	RegexpUrlTistory, err = regexp.Compile(REGEXP_URL_TISTORY)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
 	}
-	RegexpUrlGfycat, err = regexp.Compile(
-		`^http(s?):\/\/gfycat\.com\/[A-Za-z]+$`)
+	RegexpUrlTistoryWithCDN, err = regexp.Compile(REGEXP_URL_TISTORY_WITH_CDN)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
 	}
-	RegexpUrlInstagram, err = regexp.Compile(
-		`^http(s?):\/\/(www\.)?instagram\.com\/p\/[^/]+\/(\?[^/]+)?$`)
+	RegexpUrlGfycat, err = regexp.Compile(REGEXP_URL_GFYCAT)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
 	}
-	RegexpUrlImgurSingle, err = regexp.Compile(
-		`^http(s?):\/\/(i\.)?imgur\.com\/[A-Za-z0-9]+(\.gifv)?$`)
+	RegexpUrlInstagram, err = regexp.Compile(REGEXP_URL_INSTAGRAM)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
 	}
-	RegexpUrlImgurAlbum, err = regexp.Compile(
-		`^http(s?):\/\/imgur\.com\/a\/[A-Za-z0-9]+$`)
+	RegexpUrlImgurSingle, err = regexp.Compile(REGEXP_URL_IMGUR_SINGLE)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
 	}
-	RegexpUrlGoogleDrive, err = regexp.Compile(
-		`^http(s?):\/\/drive\.google\.com\/file\/d\/[^/]+\/view$`)
+	RegexpUrlImgurAlbum, err = regexp.Compile(REGEXP_URL_IMGUR_ALBUM)
+	if err != nil {
+		fmt.Println("Regexp error", err)
+		return
+	}
+	RegexpUrlGoogleDrive, err = regexp.Compile(REGEXP_URL_GOOGLEDRIVE)
+	if err != nil {
+		fmt.Println("Regexp error", err)
+		return
+	}
+	RegexpUrlPossibleTistorySite, err = regexp.Compile(REGEXP_URL_POSSIBLE_TISTORY_SITE)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
@@ -147,6 +163,8 @@ func main() {
 			dg.AddHandler(messageUpdate)
 		}
 	}
+
+	DownloadTistorySites = cfg.Section("general").Key("download tistory sites").MustBool()
 
 	err = dg.Open()
 	if err != nil {
@@ -237,6 +255,16 @@ func getDownloadLinks(url string) map[string]string {
 			return links
 		}
 	}
+	if DownloadTistorySites {
+		if RegexpUrlPossibleTistorySite.MatchString(url) {
+			links, err := getPossibleTistorySiteUrls(url)
+			if err != nil {
+				fmt.Println("checking for tistory site failed, ", url, ",", err)
+			} else if len(links) > 0 {
+				return links
+			}
+		}
+	}
 	return map[string]string{url: ""}
 }
 
@@ -268,6 +296,18 @@ func getTwitterUrls(url string) (map[string]string, error) {
 func getTistoryUrls(url string) (map[string]string, error) {
 	url = strings.Replace(url, "/image/", "/original/", -1)
 	return map[string]string{url: ""}, nil
+}
+
+func getTistoryWithCDNUrls(urlI string) (map[string]string, error) {
+	parameters, _ := url.ParseQuery(urlI)
+	if val, ok := parameters["fname"]; ok {
+		if len(val) > 0 {
+			if RegexpUrlTistory.MatchString(val[0]) {
+				return getTistoryUrls(val[0])
+			}
+		}
+	}
+	return nil, nil
 }
 
 func getGfycatUrls(url string) (map[string]string, error) {
@@ -334,6 +374,69 @@ func getGoogleDriveUrls(url string) (map[string]string, error) {
 		fileId := parts[len(parts)-2]
 		return map[string]string{"https://drive.google.com/uc?export=download&id=" + fileId: ""}, nil
 	}
+}
+
+func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
+	respHead, err := http.Head(url)
+	if err != nil {
+		return nil, err
+	}
+	contentType := ""
+	for headerKey, headerValue := range respHead.Header {
+		if headerKey == "Content-Type" {
+			contentType = headerValue[0]
+		}
+	}
+	if !strings.Contains(contentType, "text/html") {
+		return nil, nil
+	}
+
+	doc, err := goquery.NewDocument(url)
+	if err != nil {
+		return nil, err
+	}
+
+	var links = make(map[string]string)
+
+	// desktop site
+	doc.Find(".article img").Each(func(i int, s *goquery.Selection) {
+		foundUrl, exists := s.Attr("src")
+		if exists == true {
+			isTistoryUrl := RegexpUrlTistory.MatchString(foundUrl)
+			if isTistoryUrl == true {
+				finalTistoryUrls, _ := getTistoryUrls(foundUrl)
+				if len(finalTistoryUrls) > 0 {
+					for finalTistoryUrl, _ := range finalTistoryUrls {
+						foundFilename := s.AttrOr("filename", "")
+						links[finalTistoryUrl] = foundFilename
+					}
+				}
+			}
+		}
+	})
+	if len(links) <= 0 {
+		// mobile site
+		doc.Find(".section_blogview img").Each(func(i int, s *goquery.Selection) {
+			foundUrl, exists := s.Attr("src")
+			if exists == true {
+				isTistoryUrl := RegexpUrlTistoryWithCDN.MatchString(foundUrl)
+				if isTistoryUrl == true {
+					finalTistoryUrls, _ := getTistoryWithCDNUrls(foundUrl)
+					if len(finalTistoryUrls) > 0 {
+						for finalTistoryUrl, _ := range finalTistoryUrls {
+							foundFilename := s.AttrOr("filename", "")
+							links[finalTistoryUrl] = foundFilename
+						}
+					}
+				}
+			}
+		})
+	}
+
+	if len(links) > 0 {
+		fmt.Printf("[%s] Found tistory album with %d images (url: %s)\n", time.Now().Format(time.Stamp), len(links), url)
+	}
+	return links, nil
 }
 
 func getJson(url string, target interface{}) error {
