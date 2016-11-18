@@ -180,6 +180,66 @@ func messageUpdate(s *discordgo.Session, m *discordgo.MessageUpdate) {
 	handleDiscordMessage(m.Message)
 }
 
+func getDownloadLinks(url string) map[string]string {
+	if RegexpUrlTwitter.MatchString(url) {
+		links, err := getTwitterUrls(url)
+		if err != nil {
+			fmt.Println("twitter url failed,", url, ",", err)
+		} else if len(links) > 0 {
+			return links
+		}
+	}
+	if RegexpUrlTistory.MatchString(url) {
+		links, err := getTistoryUrls(url)
+		if err != nil {
+			fmt.Println("tistory url failed,", url, ",", err)
+		} else if len(links) > 0 {
+			return links
+		}
+	}
+	if RegexpUrlGfycat.MatchString(url) {
+		links, err := getGfycatUrls(url)
+		if err != nil {
+			fmt.Println("gfycat url failed,", url, ",", err)
+		} else if len(links) > 0 {
+			return links
+		}
+	}
+	if RegexpUrlInstagram.MatchString(url) {
+		links, err := getInstagramUrls(url)
+		if err != nil {
+			fmt.Println("instagram url failed,", url, ",", err)
+		} else if len(links) > 0 {
+			return links
+		}
+	}
+	if RegexpUrlImgurSingle.MatchString(url) {
+		links, err := getImgurSingleUrls(url)
+		if err != nil {
+			fmt.Println("imgur single url failed, ", url, ",", err)
+		} else if len(links) > 0 {
+			return links
+		}
+	}
+	if RegexpUrlImgurAlbum.MatchString(url) {
+		links, err := getImgurAlbumUrls(url)
+		if err != nil {
+			fmt.Println("imgur album url failed, ", url, ",", err)
+		} else if len(links) > 0 {
+			return links
+		}
+	}
+	if RegexpUrlGoogleDrive.MatchString(url) {
+		links, err := getGoogleDriveUrls(url)
+		if err != nil {
+			fmt.Println("google drive album url failed, ", url, ",", err)
+		} else if len(links) > 0 {
+			return links
+		}
+	}
+	return map[string]string{url: ""}
+}
+
 func handleDiscordMessage(m *discordgo.Message) {
 	if folderName, ok := ChannelWhitelist[m.ChannelID]; ok {
 		downloadPath := folderName
@@ -188,79 +248,32 @@ func handleDiscordMessage(m *discordgo.Message) {
 		}
 		foundUrls := xurls.Strict.FindAllString(m.Content, -1)
 		for _, iFoundUrl := range foundUrls {
-			// Twitter url?
-			if RegexpUrlTwitter.MatchString(iFoundUrl) {
-				err := handleTwitterUrl(iFoundUrl, downloadPath)
-				if err != nil {
-					fmt.Println("twitter url failed,", iFoundUrl, ",", err)
-					continue
-				}
-				// Tistory url?
-			} else if RegexpUrlTistory.MatchString(iFoundUrl) {
-				err := handleTistoryUrl(iFoundUrl, downloadPath)
-				if err != nil {
-					fmt.Println("tistory url failed,", iFoundUrl, ",", err)
-					continue
-				}
-			} else if RegexpUrlGfycat.MatchString(iFoundUrl) {
-				err := handleGfycatUrl(iFoundUrl, downloadPath)
-				if err != nil {
-					fmt.Println("gfycat url failed,", iFoundUrl, ",", err)
-					continue
-				}
-			} else if RegexpUrlInstagram.MatchString(iFoundUrl) {
-				err := handleInstagramUrl(iFoundUrl, downloadPath)
-				if err != nil {
-					fmt.Println("instagram url failed,", iFoundUrl, ",", err)
-					continue
-				}
-			} else if RegexpUrlImgurSingle.MatchString(iFoundUrl) {
-				err := handleImgurSingleUrl(iFoundUrl, downloadPath)
-				if err != nil {
-					fmt.Println("imgur single url failed, ", iFoundUrl, ",", err)
-					continue
-				}
-			} else if RegexpUrlImgurAlbum.MatchString(iFoundUrl) {
-				err := handleImgurAlbumUrl(iFoundUrl, downloadPath)
-				if err != nil {
-					fmt.Println("imgur album url failed, ", iFoundUrl, ",", err)
-					continue
-				}
-			} else if RegexpUrlGoogleDrive.MatchString(iFoundUrl) {
-				err := handleGoogleDriveUrl(iFoundUrl, downloadPath)
-				if err != nil {
-					fmt.Println("google drive album url failed, ", iFoundUrl, ",", err)
-					continue
-				}
-			} else {
-				// Any other url
-				downloadFromUrl(iFoundUrl,
-					"", downloadPath)
+			links := getDownloadLinks(iFoundUrl)
+			for link, filename := range links {
+				downloadFromUrl(link, filename, downloadPath)
 			}
 		}
 	}
 }
 
-func handleTwitterUrl(url string, folder string) error {
+func getTwitterUrls(url string) (map[string]string, error) {
 	parts := strings.Split(url, ":")
 	if len(parts) < 2 {
-		return errors.New("unable to parse twitter url")
+		return nil, errors.New("unable to parse twitter url")
 	} else {
-		downloadFromUrl("https:"+parts[1]+":orig", filenameFromUrl(parts[1]), folder)
+		return map[string]string{"https:" + parts[1] + ":orig": filenameFromUrl(parts[1])}, nil
 	}
-	return nil
 }
 
-func handleTistoryUrl(url string, folder string) error {
+func getTistoryUrls(url string) (map[string]string, error) {
 	url = strings.Replace(url, "/image/", "/original/", -1)
-	downloadFromUrl(url, "", folder)
-	return nil
+	return map[string]string{url: ""}, nil
 }
 
-func handleGfycatUrl(url string, folder string) error {
+func getGfycatUrls(url string) (map[string]string, error) {
 	parts := strings.Split(url, "/")
 	if len(parts) < 3 {
-		return errors.New("unable to parse gfycat url")
+		return nil, errors.New("unable to parse gfycat url")
 	} else {
 		gfycatId := parts[len(parts)-1]
 		gfycatObject := new(GfycatObject)
@@ -271,13 +284,83 @@ func handleGfycatUrl(url string, folder string) error {
 			fmt.Println("fallback to gfycat mp4")
 		}
 		if url == "" {
-			return errors.New("failed to read response from gfycat")
+			return nil, errors.New("failed to read response from gfycat")
 		} else {
-			downloadFromUrl(
-				gfycatUrl, "", folder)
+			return map[string]string{gfycatUrl: ""}, nil
 		}
 	}
-	return nil
+}
+
+func getInstagramUrls(url string) (map[string]string, error) {
+	// if instagram video
+	videoUrl := getInstagramVideoUrl(url)
+	if videoUrl != "" {
+		return map[string]string{videoUrl: ""}, nil
+	}
+
+	// if instagram picture
+	afterLastSlash := strings.LastIndex(url, "/")
+	mediaUrl := url[:afterLastSlash] + strings.Replace(url[afterLastSlash:], "/", "/media/?size=l", -1)
+	mediaUrl = strings.Replace(mediaUrl, "?taken-by=", "&taken-by", -1)
+	return map[string]string{mediaUrl: ""}, nil
+}
+
+func getImgurSingleUrls(url string) (map[string]string, error) {
+	url = strings.Replace(url, "imgur.com/", "imgur.com/download/", -1)
+	url = strings.Replace(url, ".gifv", "", -1)
+	return map[string]string{url: ""}, nil
+}
+
+func getImgurAlbumUrls(url string) (map[string]string, error) {
+	afterLastSlash := strings.LastIndex(url, "/")
+	albumId := url[afterLastSlash+1:]
+	headers := make(map[string]string)
+	headers["Authorization"] = "Client-ID " + IMGUR_CLIENT_ID
+	imgurAlbumObject := new(ImgurAlbumObject)
+	getJsonWithHeaders("https://api.imgur.com/3/album/"+albumId+"/images", imgurAlbumObject, headers)
+	fmt.Printf("[%s] Found imgur album url: %s\n", time.Now().Format(time.Stamp), url)
+	links := make(map[string]string)
+	for _, v := range imgurAlbumObject.Data {
+		links[v.Link] = ""
+	}
+	return links, nil
+}
+
+func getGoogleDriveUrls(url string) (map[string]string, error) {
+	parts := strings.Split(url, "/")
+	if len(parts) != 7 {
+		return nil, errors.New("unable to parse google drive url")
+	} else {
+		fileId := parts[len(parts)-2]
+		return map[string]string{"https://drive.google.com/uc?export=download&id=" + fileId: ""}, nil
+	}
+}
+
+func getJson(url string, target interface{}) error {
+	r, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	return json.NewDecoder(r.Body).Decode(target)
+}
+
+func getJsonWithHeaders(url string, target interface{}, headers map[string]string) error {
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", url, nil)
+
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	r, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	return json.NewDecoder(r.Body).Decode(target)
 }
 
 func getInstagramVideoUrl(url string) string {
@@ -310,81 +393,6 @@ func getInstagramVideoUrl(url string) string {
 		}
 	}
 
-}
-
-func handleInstagramUrl(url string, folder string) error {
-	// if instagram video
-	videoUrl := getInstagramVideoUrl(url)
-	if videoUrl != "" {
-		downloadFromUrl(videoUrl, "", folder)
-		return nil
-	}
-
-	// if instagram picture
-	afterLastSlash := strings.LastIndex(url, "/")
-	mediaUrl := url[:afterLastSlash] + strings.Replace(url[afterLastSlash:], "/", "/media/?size=l", -1)
-	mediaUrl = strings.Replace(mediaUrl, "?taken-by=", "&taken-by", -1)
-	downloadFromUrl(mediaUrl, "", folder)
-	return nil
-}
-
-func handleImgurSingleUrl(url string, folder string) error {
-	url = strings.Replace(url, "imgur.com/", "imgur.com/download/", -1)
-	url = strings.Replace(url, ".gifv", "", -1)
-	downloadFromUrl(url, "", folder)
-	return nil
-}
-
-func handleImgurAlbumUrl(url string, folder string) error {
-	afterLastSlash := strings.LastIndex(url, "/")
-	albumId := url[afterLastSlash+1:]
-	headers := make(map[string]string)
-	headers["Authorization"] = "Client-ID " + IMGUR_CLIENT_ID
-	imgurAlbumObject := new(ImgurAlbumObject)
-	getJsonWithHeaders("https://api.imgur.com/3/album/"+albumId+"/images", imgurAlbumObject, headers)
-	fmt.Printf("[%s] Found imgur album url: %s\n", time.Now().Format(time.Stamp), url)
-	for _, v := range imgurAlbumObject.Data {
-		downloadFromUrl(v.Link, "", folder)
-	}
-	return nil
-}
-
-func handleGoogleDriveUrl(url string, folder string) error {
-	parts := strings.Split(url, "/")
-	if len(parts) != 7 {
-		return errors.New("unable to parse google drive url")
-	} else {
-		fileId := parts[len(parts)-2]
-		downloadFromUrl("https://drive.google.com/uc?export=download&id="+fileId, "", folder)
-	}
-	return nil
-}
-
-func getJson(url string, target interface{}) error {
-	r, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer r.Body.Close()
-
-	return json.NewDecoder(r.Body).Decode(target)
-}
-
-func getJsonWithHeaders(url string, target interface{}, headers map[string]string) error {
-	client := &http.Client{}
-	req, _ := http.NewRequest("GET", url, nil)
-
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
-
-	r, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer r.Body.Close()
-
-	return json.NewDecoder(r.Body).Decode(target)
 }
 
 func filenameFromUrl(dUrl string) string {
