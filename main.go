@@ -364,7 +364,11 @@ func getJsonWithHeaders(url string, target interface{}, headers map[string]strin
 }
 
 func getInstagramVideoUrl(url string) string {
-	resp, _ := http.Get(url)
+	resp, err := http.Get(url)
+
+	if err != nil {
+		return ""
+	}
 
 	defer resp.Body.Close()
 	z := html.NewTokenizer(resp.Body)

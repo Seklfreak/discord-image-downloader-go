@@ -2,6 +2,7 @@ package main
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -79,7 +80,7 @@ func TestGetGfycatUrls(t *testing.T) {
 	}
 }
 
-var getInstagramUrlsTests = []urlsTestpair{
+var getInstagramUrlsPictureTests = []urlsTestpair{
 	{
 		"https://www.instagram.com/p/BHhDAmhAz33/?taken-by=s_sohye",
 		map[string]string{"https://www.instagram.com/p/BHhDAmhAz33/media/?size=l&taken-bys_sohye": ""},
@@ -88,24 +89,40 @@ var getInstagramUrlsTests = []urlsTestpair{
 		"https://www.instagram.com/p/BHhDAmhAz33/",
 		map[string]string{"https://www.instagram.com/p/BHhDAmhAz33/media/?size=l": ""},
 	},
+}
+
+var getInstagramUrlsVideoTests = []urlsTestpair{
 	{
 		"https://www.instagram.com/p/BL2_ZIHgYTp/?taken-by=s_sohye",
-		map[string]string{"http://scontent-amt2-1.cdninstagram.com/t50.2886-16/14811404_233311497085396_338650092456116224_n.mp4": ""},
+		map[string]string{"14811404_233311497085396_338650092456116224_n.mp4": ""},
 	},
 	{
 		"https://www.instagram.com/p/BL2_ZIHgYTp/",
-		map[string]string{"http://scontent-amt2-1.cdninstagram.com/t50.2886-16/14811404_233311497085396_338650092456116224_n.mp4": ""},
+		map[string]string{"14811404_233311497085396_338650092456116224_n.mp4": ""},
 	},
 }
 
 func TestGetInstagramUrls(t *testing.T) {
-	for _, pair := range getInstagramUrlsTests {
+	for _, pair := range getInstagramUrlsPictureTests {
 		v, err := getInstagramUrls(pair.value)
 		if err != nil {
 			t.Errorf("For %v, expected %v, got %v", pair.value, nil, err)
 		}
 		if !reflect.DeepEqual(v, pair.result) {
 			t.Errorf("For %s, expected %s, got %s", pair.value, pair.result, v)
+		}
+	}
+	for _, pair := range getInstagramUrlsVideoTests {
+		v, err := getInstagramUrls(pair.value)
+		if err != nil {
+			t.Errorf("For %v, expected %v, got %v", pair.value, nil, err)
+		}
+		for keyResult, valueResult := range pair.result {
+			for keyExpected, valueExpected := range v {
+				if strings.Contains(keyResult, keyExpected) || valueResult != valueExpected { // CDN location can vary
+					t.Errorf("For %s, expected %s, got %s", pair.value, pair.result, v)
+				}
+			}
 		}
 	}
 }

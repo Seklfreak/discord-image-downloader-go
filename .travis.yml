@@ -1,7 +1,7 @@
 language: go
 go:
   - master
-  - tip
+#  - tip
 install:
     - go get -v .
     - go get -v github.com/golang/lint/golint
