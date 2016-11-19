@@ -25,6 +25,7 @@ import (
 
 var (
 	ChannelWhitelist             map[string]string
+	InteractiveChannelWhitelist  map[string]string
 	BaseDownloadPath             string
 	RegexpUrlTwitter             *regexp.Regexp
 	RegexpUrlTistory             *regexp.Regexp
@@ -38,10 +39,12 @@ var (
 	ImagesDownloaded             int
 	dg                           *discordgo.Session
 	DownloadTistorySites         bool
+	interactiveChannelLinkTemp   map[string]string
+	DiscordUserId                string
 )
 
 const (
-	VERSION                          string = "1.10"
+	VERSION                          string = "1.11"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID                  string = "a39473314df3f59"
 	REGEXP_URL_TWITTER               string = `^http(s?):\/\/pbs\.twimg\.com\/media\/[^\./]+\.(jpg|png)((\:[a-z]+)?)$`
@@ -97,6 +100,8 @@ func main() {
 	}
 
 	ChannelWhitelist = cfg.Section("channels").KeysHash()
+	InteractiveChannelWhitelist = cfg.Section("interactive channels").KeysHash()
+	interactiveChannelLinkTemp = make(map[string]string)
 
 	RegexpUrlTwitter, err = regexp.Compile(REGEXP_URL_TWITTER)
 	if err != nil {
@@ -179,6 +184,7 @@ func main() {
 
 	fmt.Printf("Client is now connected as %s (ID: %s). Press CTRL-C to exit.\n",
 		u.Username, u.ID)
+	DiscordUserId = u.ID
 
 	err = dg.UpdateStatus(1, "")
 	if err != nil {
@@ -270,18 +276,67 @@ func getDownloadLinks(url string) map[string]string {
 
 func handleDiscordMessage(m *discordgo.Message) {
 	if folderName, ok := ChannelWhitelist[m.ChannelID]; ok {
-		downloadPath := folderName
 		for _, iAttachment := range m.Attachments {
-			downloadFromUrl(iAttachment.URL, iAttachment.Filename, downloadPath)
+			downloadFromUrl(iAttachment.URL, iAttachment.Filename, folderName)
 		}
 		foundUrls := xurls.Strict.FindAllString(m.Content, -1)
 		for _, iFoundUrl := range foundUrls {
 			links := getDownloadLinks(iFoundUrl)
 			for link, filename := range links {
-				downloadFromUrl(link, filename, downloadPath)
+				downloadFromUrl(link, filename, folderName)
+			}
+		}
+	} else if folderName, ok := InteractiveChannelWhitelist[m.ChannelID]; ok {
+		if DiscordUserId != "" && m.Author.ID != DiscordUserId {
+			if link, ok := interactiveChannelLinkTemp[m.ChannelID]; ok {
+				if m.Content == "." {
+					dg.ChannelMessageSend(m.ChannelID, "Download started\n")
+					links := getDownloadLinks(link)
+					for linkR, filename := range links {
+						downloadFromUrl(linkR, filename, folderName)
+					}
+					delete(interactiveChannelLinkTemp, m.ChannelID)
+				} else if IsValid(m.Content) {
+					dg.ChannelMessageSend(m.ChannelID, "Download started\n")
+					links := getDownloadLinks(link)
+					for linkR, filename := range links {
+						downloadFromUrl(linkR, filename, m.Content)
+					}
+					delete(interactiveChannelLinkTemp, m.ChannelID)
+				} else {
+					dg.ChannelMessageSend(m.ChannelID, "invalid path")
+				}
+			} else {
+				_ = folderName
+				for _, iAttachment := range m.Attachments {
+					dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path %s", iAttachment.URL, folderName))
+					interactiveChannelLinkTemp[m.ChannelID] = iAttachment.URL
+				}
+				foundUrls := xurls.Strict.FindAllString(m.Content, -1)
+				for _, iFoundUrl := range foundUrls {
+					dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path %s", iFoundUrl, folderName))
+					interactiveChannelLinkTemp[m.ChannelID] = iFoundUrl
+				}
 			}
 		}
 	}
+}
+
+// http://stackoverflow.com/a/35240286/1443726
+func IsValid(fp string) bool {
+	// Check if file already exists
+	if _, err := os.Stat(fp); err == nil {
+		return true
+	}
+
+	// Attempt to create it
+	var d []byte
+	if err := ioutil.WriteFile(fp, d, 0644); err == nil {
+		os.Remove(fp) // And delete it
+		return true
+	}
+
+	return false
 }
 
 func getTwitterUrls(url string) (map[string]string, error) {

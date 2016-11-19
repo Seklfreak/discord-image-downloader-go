@@ -242,21 +242,23 @@ func TestGetTistoryWithCDNUrls(t *testing.T) {
 
 var getPossibleTistorySiteUrlsTests = []urlsTestpair{
 	{
-		"http://shaq32.tistory.com/395",
+		"http://soonduck.tistory.com/482",
 		map[string]string{
-			"http://cfile24.uf.tistory.com/original/2658554B580BDC4C0924CA": "A10Y4472.jpg",
-			"http://cfile21.uf.tistory.com/original/26469D4B580BDC4D0D0387": "A27R9111.jpg",
-			"http://cfile29.uf.tistory.com/original/2744A54B580BDC4F0EFAEE": "A10Y5545.jpg",
-			"http://cfile28.uf.tistory.com/original/2758534B580BDC500969E4": "A10Y5613.jpg",
+			"http://cfile5.uf.tistory.com/original/230AA53C57D2D7F42124AB":  "20160909-A27R3648.jpg",
+			"http://cfile9.uf.tistory.com/original/2675943C57D2D7F532FA76":  "20160909-A27R3784.jpg",
+			"http://cfile23.uf.tistory.com/original/230E6C3C57D2D7F71D973C": "20160909-A27R4027.jpg",
+			"http://cfile6.uf.tistory.com/original/250BC13C57D2D7F820836E":  "20160909-A27R4535.jpg",
+			"http://cfile5.uf.tistory.com/original/217A0F3C57D2D7F228A3EE":  "20160909-A27R3325.jpg",
 		},
 	},
 	{
-		"http://shaq32.tistory.com/m/395",
+		"http://soonduck.tistory.com/m/482",
 		map[string]string{
-			"http://cfile24.uf.tistory.com/original/2658554B580BDC4C0924CA": "",
-			"http://cfile21.uf.tistory.com/original/26469D4B580BDC4D0D0387": "",
-			"http://cfile29.uf.tistory.com/original/2744A54B580BDC4F0EFAEE": "",
-			"http://cfile28.uf.tistory.com/original/2758534B580BDC500969E4": "",
+			"http://cfile5.uf.tistory.com/original/230AA53C57D2D7F42124AB":  "20160909-A27R3648.jpg",
+			"http://cfile9.uf.tistory.com/original/2675943C57D2D7F532FA76":  "20160909-A27R3784.jpg",
+			"http://cfile23.uf.tistory.com/original/230E6C3C57D2D7F71D973C": "20160909-A27R4027.jpg",
+			"http://cfile6.uf.tistory.com/original/250BC13C57D2D7F820836E":  "20160909-A27R4535.jpg",
+			"http://cfile5.uf.tistory.com/original/217A0F3C57D2D7F228A3EE":  "20160909-A27R3325.jpg",
 		},
 	},
 	{
