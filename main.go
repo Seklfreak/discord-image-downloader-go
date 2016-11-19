@@ -44,7 +44,7 @@ var (
 )
 
 const (
-	VERSION                          string = "1.11"
+	VERSION                          string = "1.11.1"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID                  string = "a39473314df3f59"
 	REGEXP_URL_TWITTER               string = `^http(s?):\/\/pbs\.twimg\.com\/media\/[^\./]+\.(jpg|png)((\:[a-z]+)?)$`
@@ -287,7 +287,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 			}
 		}
 	} else if folderName, ok := InteractiveChannelWhitelist[m.ChannelID]; ok {
-		if DiscordUserId != "" && m.Author.ID != DiscordUserId {
+		if DiscordUserId != "" && m.Author != nil && m.Author.ID != DiscordUserId {
 			if link, ok := interactiveChannelLinkTemp[m.ChannelID]; ok {
 				if m.Content == "." {
 					dg.ChannelMessageSend(m.ChannelID, "Download started\n")
