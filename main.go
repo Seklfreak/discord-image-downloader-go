@@ -52,7 +52,7 @@ const (
 	REGEXP_URL_IMGUR_SINGLE          string = `^http(s?):\/\/(i\.)?imgur\.com\/[A-Za-z0-9]+(\.gifv)?$`
 	REGEXP_URL_IMGUR_ALBUM           string = `^http(s?):\/\/imgur\.com\/a\/[A-Za-z0-9]+$`
 	REGEXP_URL_GOOGLEDRIVE           string = `^http(s?):\/\/drive\.google\.com\/file\/d\/[^/]+\/view$`
-	REGEXP_URL_POSSIBLE_TISTORY_SITE string = `http(s)?:\/\/[0-9a-zA-Z\.]+\/(m\/)?[0-9]+`
+	REGEXP_URL_POSSIBLE_TISTORY_SITE string = `^http(s)?:\/\/[0-9a-zA-Z\.-]+\/(m\/)?[0-9]+$`
 )
 
 type GfycatObject struct {
@@ -399,7 +399,7 @@ func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
 	var links = make(map[string]string)
 
 	// desktop site
-	doc.Find(".article img").Each(func(i int, s *goquery.Selection) {
+	doc.Find(".article img, #content img").Each(func(i int, s *goquery.Selection) {
 		foundUrl, exists := s.Attr("src")
 		if exists == true {
 			isTistoryUrl := RegexpUrlTistory.MatchString(foundUrl)
