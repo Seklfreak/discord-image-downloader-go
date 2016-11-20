@@ -44,7 +44,7 @@ var (
 )
 
 const (
-	VERSION                          string = "1.11.1"
+	VERSION                          string = "1.11.2"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID                  string = "a39473314df3f59"
 	REGEXP_URL_TWITTER               string = `^http(s?):\/\/pbs\.twimg\.com\/media\/[^\./]+\.(jpg|png)((\:[a-z]+)?)$`
@@ -453,12 +453,20 @@ func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
 
 	var links = make(map[string]string)
 
-	// desktop site
-	doc.Find(".article img, #content img").Each(func(i int, s *goquery.Selection) {
+	doc.Find(".article img, #content img, div[role=main] img, .section_blogview img").Each(func(i int, s *goquery.Selection) {
 		foundUrl, exists := s.Attr("src")
 		if exists == true {
+			isTistoryCdnUrl := RegexpUrlTistoryWithCDN.MatchString(foundUrl)
 			isTistoryUrl := RegexpUrlTistory.MatchString(foundUrl)
-			if isTistoryUrl == true {
+			if isTistoryCdnUrl == true {
+				finalTistoryUrls, _ := getTistoryWithCDNUrls(foundUrl)
+				if len(finalTistoryUrls) > 0 {
+					for finalTistoryUrl, _ := range finalTistoryUrls {
+						foundFilename := s.AttrOr("filename", "")
+						links[finalTistoryUrl] = foundFilename
+					}
+				}
+			} else if isTistoryUrl == true {
 				finalTistoryUrls, _ := getTistoryUrls(foundUrl)
 				if len(finalTistoryUrls) > 0 {
 					for finalTistoryUrl, _ := range finalTistoryUrls {
@@ -469,24 +477,6 @@ func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
 			}
 		}
 	})
-	if len(links) <= 0 {
-		// mobile site
-		doc.Find(".section_blogview img").Each(func(i int, s *goquery.Selection) {
-			foundUrl, exists := s.Attr("src")
-			if exists == true {
-				isTistoryUrl := RegexpUrlTistoryWithCDN.MatchString(foundUrl)
-				if isTistoryUrl == true {
-					finalTistoryUrls, _ := getTistoryWithCDNUrls(foundUrl)
-					if len(finalTistoryUrls) > 0 {
-						for finalTistoryUrl, _ := range finalTistoryUrls {
-							foundFilename := s.AttrOr("filename", "")
-							links[finalTistoryUrl] = foundFilename
-						}
-					}
-				}
-			}
-		})
-	}
 
 	if len(links) > 0 {
 		fmt.Printf("[%s] Found tistory album with %d images (url: %s)\n", time.Now().Format(time.Stamp), len(links), url)
