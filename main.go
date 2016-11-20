@@ -366,7 +366,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 }
 
 type GithubReleaseApiObject struct {
-	Name string
+	TagName string `json:"tag_name"`
 }
 
 func isLatestRelease() bool {
@@ -377,7 +377,7 @@ func isLatestRelease() bool {
 		fmt.Println(err)
 		return true
 	}
-	lastVer, err := version.NewVersion(githubReleaseApiObject.Name)
+	lastVer, err := version.NewVersion(githubReleaseApiObject.TagName)
 	if err != nil {
 		fmt.Println(err)
 		return true
