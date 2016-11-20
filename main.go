@@ -44,7 +44,7 @@ var (
 )
 
 const (
-	VERSION                          string = "1.11.2"
+	VERSION                          string = "1.11.3"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID                  string = "a39473314df3f59"
 	REGEXP_URL_TWITTER               string = `^http(s?):\/\/pbs\.twimg\.com\/media\/[^\./]+\.(jpg|png)((\:[a-z]+)?)$`
@@ -288,34 +288,62 @@ func handleDiscordMessage(m *discordgo.Message) {
 		}
 	} else if folderName, ok := InteractiveChannelWhitelist[m.ChannelID]; ok {
 		if DiscordUserId != "" && m.Author != nil && m.Author.ID != DiscordUserId {
-			if link, ok := interactiveChannelLinkTemp[m.ChannelID]; ok {
-				if m.Content == "." {
-					dg.ChannelMessageSend(m.ChannelID, "Download started\n")
-					links := getDownloadLinks(link)
-					for linkR, filename := range links {
-						downloadFromUrl(linkR, filename, folderName)
+			dg.ChannelTyping(m.ChannelID)
+			switch message := strings.ToLower(m.Content); message {
+			case "help":
+				dg.ChannelMessageSend(m.ChannelID,
+					"**<link>** to download a link\n**version** to find out the version\n**channels** to list active channels\n**help** to open this help\n ")
+			case "version":
+				dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("discord-image-downloder-go **v%s**", VERSION))
+			case "channels":
+				dg.ChannelMessageSend(m.ChannelID, "**channels**")
+				for channelId, channelFolder := range ChannelWhitelist {
+					dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("#%s: `%s`", channelId, channelFolder))
+				}
+				dg.ChannelMessageSend(m.ChannelID, "**interactive channels**")
+				for channelId, channelFolder := range InteractiveChannelWhitelist {
+					dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("#%s: `%s`", channelId, channelFolder))
+				}
+			default:
+				if link, ok := interactiveChannelLinkTemp[m.ChannelID]; ok {
+					if m.Content == "." {
+						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> started", link))
+						dg.ChannelTyping(m.ChannelID)
+						delete(interactiveChannelLinkTemp, m.ChannelID)
+						links := getDownloadLinks(link)
+						for linkR, filename := range links {
+							downloadFromUrl(linkR, filename, folderName)
+						}
+						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> finished", link))
+					} else if IsValid(m.Content) {
+						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> started", link))
+						dg.ChannelTyping(m.ChannelID)
+						delete(interactiveChannelLinkTemp, m.ChannelID)
+						links := getDownloadLinks(link)
+						for linkR, filename := range links {
+							downloadFromUrl(linkR, filename, m.Content)
+						}
+						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> finished", link))
+					} else {
+						dg.ChannelMessageSend(m.ChannelID, "invalid path")
 					}
-					delete(interactiveChannelLinkTemp, m.ChannelID)
-				} else if IsValid(m.Content) {
-					dg.ChannelMessageSend(m.ChannelID, "Download started\n")
-					links := getDownloadLinks(link)
-					for linkR, filename := range links {
-						downloadFromUrl(linkR, filename, m.Content)
-					}
-					delete(interactiveChannelLinkTemp, m.ChannelID)
 				} else {
-					dg.ChannelMessageSend(m.ChannelID, "invalid path")
-				}
-			} else {
-				_ = folderName
-				for _, iAttachment := range m.Attachments {
-					dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path %s", iAttachment.URL, folderName))
-					interactiveChannelLinkTemp[m.ChannelID] = iAttachment.URL
-				}
-				foundUrls := xurls.Strict.FindAllString(m.Content, -1)
-				for _, iFoundUrl := range foundUrls {
-					dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path %s", iFoundUrl, folderName))
-					interactiveChannelLinkTemp[m.ChannelID] = iFoundUrl
+					_ = folderName
+					foundLinks := false
+					for _, iAttachment := range m.Attachments {
+						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path %s", iAttachment.URL, folderName))
+						interactiveChannelLinkTemp[m.ChannelID] = iAttachment.URL
+						foundLinks = true
+					}
+					foundUrls := xurls.Strict.FindAllString(m.Content, -1)
+					for _, iFoundUrl := range foundUrls {
+						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path %s", iFoundUrl, folderName))
+						interactiveChannelLinkTemp[m.ChannelID] = iFoundUrl
+						foundLinks = true
+					}
+					if foundLinks == false {
+						dg.ChannelMessageSend(m.ChannelID, "unable to find valid link")
+					}
 				}
 			}
 		}
@@ -413,11 +441,11 @@ func getImgurAlbumUrls(url string) (map[string]string, error) {
 	headers["Authorization"] = "Client-ID " + IMGUR_CLIENT_ID
 	imgurAlbumObject := new(ImgurAlbumObject)
 	getJsonWithHeaders("https://api.imgur.com/3/album/"+albumId+"/images", imgurAlbumObject, headers)
-	fmt.Printf("[%s] Found imgur album url: %s\n", time.Now().Format(time.Stamp), url)
 	links := make(map[string]string)
 	for _, v := range imgurAlbumObject.Data {
 		links[v.Link] = ""
 	}
+	fmt.Printf("[%s] Found imgur album with %d images (url: %s)\n", time.Now().Format(time.Stamp), len(links), url)
 	return links, nil
 }
 
