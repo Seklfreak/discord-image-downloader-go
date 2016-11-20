@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/HouzuoGuo/tiedot/db"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/bwmarrin/discordgo"
 	"github.com/hashicorp/go-version"
@@ -37,15 +38,16 @@ var (
 	RegexpUrlImgurAlbum          *regexp.Regexp
 	RegexpUrlGoogleDrive         *regexp.Regexp
 	RegexpUrlPossibleTistorySite *regexp.Regexp
-	ImagesDownloaded             int
 	dg                           *discordgo.Session
 	DownloadTistorySites         bool
 	interactiveChannelLinkTemp   map[string]string
 	DiscordUserId                string
+	myDB                         *db.DB
 )
 
 const (
-	VERSION                          string = "1.12.1"
+	VERSION                          string = "1.13"
+	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID                  string = "a39473314df3f59"
@@ -101,6 +103,22 @@ func main() {
 		}
 		fmt.Println("Wrote config file, please fill out and restart the program")
 		return
+	}
+
+	myDB, err = db.OpenDB(DATABASE_DIR)
+	if err != nil {
+		fmt.Println("unable to create db", err)
+		return
+	}
+	if myDB.Use("Downloads") == nil {
+		if err := myDB.Create("Downloads"); err != nil {
+			fmt.Println("unable to create db", err)
+			return
+		}
+		if err := myDB.Use("Downloads").Index([]string{"Url"}); err != nil {
+			fmt.Println("unable to create index", err)
+			return
+		}
 	}
 
 	ChannelWhitelist = cfg.Section("channels").KeysHash()
@@ -186,8 +204,8 @@ func main() {
 		fmt.Println("error obtaining account details,", err)
 	}
 
-	fmt.Printf("Client is now connected as %s (ID: %s). Press CTRL-C to exit.\n",
-		u.Username, u.ID)
+	fmt.Printf("Client is now connected as %s. Press CTRL-C to exit.\n",
+		u.Username)
 	DiscordUserId = u.ID
 
 	err = dg.UpdateStatus(1, "")
@@ -197,6 +215,7 @@ func main() {
 
 	// keep program running until CTRL-C is pressed.
 	<-make(chan struct{})
+	myDB.Close()
 	return
 }
 
@@ -281,13 +300,13 @@ func getDownloadLinks(url string) map[string]string {
 func handleDiscordMessage(m *discordgo.Message) {
 	if folderName, ok := ChannelWhitelist[m.ChannelID]; ok {
 		for _, iAttachment := range m.Attachments {
-			downloadFromUrl(iAttachment.URL, iAttachment.Filename, folderName)
+			downloadFromUrl(iAttachment.URL, iAttachment.Filename, folderName, m.ChannelID, m.Author.ID)
 		}
 		foundUrls := xurls.Strict.FindAllString(m.Content, -1)
 		for _, iFoundUrl := range foundUrls {
 			links := getDownloadLinks(iFoundUrl)
 			for link, filename := range links {
-				downloadFromUrl(link, filename, folderName)
+				downloadFromUrl(link, filename, folderName, m.ChannelID, m.Author.ID)
 			}
 		}
 	} else if folderName, ok := InteractiveChannelWhitelist[m.ChannelID]; ok {
@@ -308,14 +327,91 @@ func handleDiscordMessage(m *discordgo.Message) {
 			case "channels":
 				dg.ChannelMessageSend(m.ChannelID, "**channels**")
 				for channelId, channelFolder := range ChannelWhitelist {
-					dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("#%s: `%s`", channelId, channelFolder))
+					channel, err := dg.Channel(channelId)
+					if err == nil {
+						if channel.IsPrivate {
+							dg.ChannelMessageSend(m.ChannelID,
+								fmt.Sprintf("@%s (`#%s`): `%s`", channel.Recipient.Username, channelId, channelFolder))
+						} else {
+							guild, err := dg.Guild(channel.GuildID)
+							if err == nil {
+								dg.ChannelMessageSend(m.ChannelID,
+									fmt.Sprintf("#%s/%s (`#%s`): `%s`", guild.Name, channel.Name, channelId, channelFolder))
+							}
+						}
+					}
 				}
 				dg.ChannelMessageSend(m.ChannelID, "**interactive channels**")
 				for channelId, channelFolder := range InteractiveChannelWhitelist {
-					dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("#%s: `%s`", channelId, channelFolder))
+					channel, err := dg.Channel(channelId)
+					if err == nil {
+						if channel.IsPrivate {
+							dg.ChannelMessageSend(m.ChannelID,
+								fmt.Sprintf("@%s (`#%s`): `%s`", channel.Recipient.Username, channelId, channelFolder))
+						} else {
+							guild, err := dg.Guild(channel.GuildID)
+							if err == nil {
+								dg.ChannelMessageSend(m.ChannelID,
+									fmt.Sprintf("#%s/%s (`#%s`): `%s`", guild.Name, channel.Name, channelId, channelFolder))
+							}
+						}
+					}
 				}
 			case "stats":
-				dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("I downloaded **%d** pictures in this session", ImagesDownloaded))
+				dg.ChannelTyping(m.ChannelID)
+				channelStats := make(map[string]int)
+				userStats := make(map[string]int)
+				userGuilds := make(map[string]string)
+				i := 0
+				myDB.Use("Downloads").ForEachDoc(func(id int, docContent []byte) (willMoveOn bool) {
+					downloadedImage := findDownloadedImageById(id)
+					channelStats[downloadedImage.ChannelId] += 1
+					userStats[downloadedImage.UserId] += 1
+					if _, ok := userGuilds[downloadedImage.UserId]; !ok {
+						channel, err := dg.Channel(downloadedImage.ChannelId)
+						if err == nil && channel.GuildID != "" {
+							userGuilds[downloadedImage.UserId] = channel.GuildID
+						}
+					}
+					i++
+					return true
+				})
+				dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("I downloaded **%d** pictures in **%d** channels by **%d** users", i, len(channelStats), len(userStats)))
+				dg.ChannelMessageSend(m.ChannelID, "**channel breakdown**")
+				for channelId, downloads := range channelStats {
+					channel, err := dg.Channel(channelId)
+					if err == nil {
+						if channel.IsPrivate {
+							dg.ChannelMessageSend(m.ChannelID,
+								fmt.Sprintf("@%s (`#%s`): **%d** downloads", channel.Recipient.Username, channelId, downloads))
+						} else {
+							guild, err := dg.Guild(channel.GuildID)
+							if err == nil {
+								dg.ChannelMessageSend(m.ChannelID,
+									fmt.Sprintf("#%s/%s (`#%s`): **%d** downloads", guild.Name, channel.Name, channelId, downloads))
+							} else {
+								fmt.Println(err)
+							}
+						}
+					} else {
+						fmt.Println(err)
+					}
+				}
+				dg.ChannelMessageSend(m.ChannelID, "**user breakdown**")
+				for userId, downloads := range userStats {
+					if guildId, ok := userGuilds[userId]; ok {
+						user, err := dg.GuildMember(guildId, userId)
+						if err == nil {
+							dg.ChannelMessageSend(m.ChannelID,
+								fmt.Sprintf("@%s: **%d** downloads", user.User.Username, downloads))
+						} else {
+							fmt.Println(err)
+						}
+					} else {
+						dg.ChannelMessageSend(m.ChannelID,
+							fmt.Sprintf("@%s: **%d** downloads", userId, downloads))
+					}
+				}
 			default:
 				if link, ok := interactiveChannelLinkTemp[m.ChannelID]; ok {
 					if m.Content == "." {
@@ -324,7 +420,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 						delete(interactiveChannelLinkTemp, m.ChannelID)
 						links := getDownloadLinks(link)
 						for linkR, filename := range links {
-							downloadFromUrl(linkR, filename, folderName)
+							downloadFromUrl(linkR, filename, folderName, m.ChannelID, m.Author.ID)
 						}
 						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> finished", link))
 					} else if strings.ToLower(m.Content) == "cancel" {
@@ -336,7 +432,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 						delete(interactiveChannelLinkTemp, m.ChannelID)
 						links := getDownloadLinks(link)
 						for linkR, filename := range links {
-							downloadFromUrl(linkR, filename, m.Content)
+							downloadFromUrl(linkR, filename, m.Content, m.ChannelID, m.Author.ID)
 						}
 						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> finished", link))
 					} else {
@@ -636,7 +732,7 @@ func filenameFromUrl(dUrl string) string {
 	return parts[0]
 }
 
-func downloadFromUrl(dUrl string, filename string, path string) {
+func downloadFromUrl(dUrl string, filename string, path string, channelId string, userId string) {
 	err := os.MkdirAll(path, 755)
 	if err != nil {
 		fmt.Println("Error while creating folder", path, "-", err)
@@ -709,10 +805,68 @@ func downloadFromUrl(dUrl string, filename string, path string) {
 	}
 
 	fmt.Printf("[%s] Downloaded url: %s to %s\n", time.Now().Format(time.Stamp), dUrl, completePath)
+	err = insertDownloadedImage(&DownloadedImage{Url: dUrl, Time: time.Now(), Destination: completePath, ChannelId: channelId, UserId: userId})
+	if err != nil {
+		fmt.Println("Error while writing to database", err)
+	}
+
 	updateDiscordStatus()
 }
 
+type DownloadedImage struct {
+	Url         string
+	Time        time.Time
+	Destination string
+	ChannelId   string
+	UserId      string
+}
+
+func insertDownloadedImage(downloadedImage *DownloadedImage) error {
+	_, err := myDB.Use("Downloads").Insert(map[string]interface{}{
+		"Url":         downloadedImage.Url,
+		"Time":        downloadedImage.Time.String(),
+		"Destination": downloadedImage.Destination,
+		"ChannelId":   downloadedImage.ChannelId,
+		"UserId":      downloadedImage.UserId,
+	})
+	return err
+}
+
+func findDownloadedImageById(id int) *DownloadedImage {
+	downloads := myDB.Use("Downloads")
+	//var query interface{}
+	//json.Unmarshal([]byte(fmt.Sprintf(`[{"eq": "%d", "in": ["Id"]}]`, id)), &query)
+	//queryResult := make(map[int]struct{})
+	//db.EvalQuery(query, myDB.Use("Downloads"), &queryResult)
+
+	readBack, err := downloads.Read(id)
+	if err != nil {
+		fmt.Println(err)
+	}
+	timeT, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", readBack["Time"].(string))
+	if err != nil {
+		fmt.Println(err)
+	}
+	return &DownloadedImage{
+		Url:         readBack["Url"].(string),
+		Time:        timeT,
+		Destination: readBack["Destination"].(string),
+		ChannelId:   readBack["ChannelId"].(string),
+		UserId:      readBack["UserId"].(string),
+	}
+}
+
+func countDownloadedImages() int {
+	i := 0
+	myDB.Use("Downloads").ForEachDoc(func(id int, docContent []byte) (willMoveOn bool) {
+		//fmt.Printf("%v\n", findDownloadedImageById(id))
+		i++
+		return true
+	})
+	return i
+	// fmt.Println(myDB.Use("Downloads").ApproxDocCount()) TODO?
+}
+
 func updateDiscordStatus() {
-	ImagesDownloaded++
-	dg.UpdateStatus(0, fmt.Sprintf("%d pictures downloaded", ImagesDownloaded))
+	dg.UpdateStatus(0, fmt.Sprintf("%d pictures downloaded", countDownloadedImages()))
 }
