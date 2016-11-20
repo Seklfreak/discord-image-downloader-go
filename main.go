@@ -18,6 +18,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/bwmarrin/discordgo"
+	"github.com/hashicorp/go-version"
 	"github.com/mvdan/xurls"
 	"golang.org/x/net/html"
 	"gopkg.in/ini.v1"
@@ -44,8 +45,9 @@ var (
 )
 
 const (
-	VERSION                          string = "1.11.3"
+	VERSION                          string = "v1.12"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
+	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID                  string = "a39473314df3f59"
 	REGEXP_URL_TWITTER               string = `^http(s?):\/\/pbs\.twimg\.com\/media\/[^\./]+\.(jpg|png)((\:[a-z]+)?)$`
 	REGEXP_URL_TISTORY               string = `^http(s?):\/\/[a-z0-9]+\.uf\.tistory\.com\/(image|original)\/[A-Z0-9]+$`
@@ -70,7 +72,9 @@ type ImgurAlbumObject struct {
 
 func main() {
 	fmt.Printf("discord-image-downloader-go version %s\n", VERSION)
-	fmt.Printf("Go to %s to get the latest release.\n", RELEASE_URL)
+	if !isLatestRelease() {
+		fmt.Printf("update available on %s !\n", RELEASE_URL)
+	}
 
 	var err error
 	cfg, err := ini.Load("config.ini")
@@ -292,9 +296,15 @@ func handleDiscordMessage(m *discordgo.Message) {
 			switch message := strings.ToLower(m.Content); message {
 			case "help":
 				dg.ChannelMessageSend(m.ChannelID,
-					"**<link>** to download a link\n**version** to find out the version\n**channels** to list active channels\n**help** to open this help\n ")
+					"**<link>** to download a link\n**version** to find out the version\n**stats** to view stats\n**channels** to list active channels\n**help** to open this help\n ")
 			case "version":
 				dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("discord-image-downloder-go **v%s**", VERSION))
+				dg.ChannelTyping(m.ChannelID)
+				if isLatestRelease() {
+					dg.ChannelMessageSend(m.ChannelID, "version is up to date")
+				} else {
+					dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("**update available on <%s>**", RELEASE_URL))
+				}
 			case "channels":
 				dg.ChannelMessageSend(m.ChannelID, "**channels**")
 				for channelId, channelFolder := range ChannelWhitelist {
@@ -304,6 +314,8 @@ func handleDiscordMessage(m *discordgo.Message) {
 				for channelId, channelFolder := range InteractiveChannelWhitelist {
 					dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("#%s: `%s`", channelId, channelFolder))
 				}
+			case "stats":
+				dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("I downloaded **%d** pictures in this session", ImagesDownloaded))
 			default:
 				if link, ok := interactiveChannelLinkTemp[m.ChannelID]; ok {
 					if m.Content == "." {
@@ -315,6 +327,9 @@ func handleDiscordMessage(m *discordgo.Message) {
 							downloadFromUrl(linkR, filename, folderName)
 						}
 						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> finished", link))
+					} else if strings.ToLower(m.Content) == "cancel" {
+						delete(interactiveChannelLinkTemp, m.ChannelID)
+						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> cancelled", link))
 					} else if IsValid(m.Content) {
 						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> started", link))
 						dg.ChannelTyping(m.ChannelID)
@@ -331,13 +346,13 @@ func handleDiscordMessage(m *discordgo.Message) {
 					_ = folderName
 					foundLinks := false
 					for _, iAttachment := range m.Attachments {
-						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path %s", iAttachment.URL, folderName))
+						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path or **cancel** to cancel the download %s", iAttachment.URL, folderName))
 						interactiveChannelLinkTemp[m.ChannelID] = iAttachment.URL
 						foundLinks = true
 					}
 					foundUrls := xurls.Strict.FindAllString(m.Content, -1)
 					for _, iFoundUrl := range foundUrls {
-						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path %s", iFoundUrl, folderName))
+						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path or **cancel** to cancel the download %s", iFoundUrl, folderName))
 						interactiveChannelLinkTemp[m.ChannelID] = iFoundUrl
 						foundLinks = true
 					}
@@ -348,6 +363,29 @@ func handleDiscordMessage(m *discordgo.Message) {
 			}
 		}
 	}
+}
+
+type GithubReleaseApiObject struct {
+	Name string
+}
+
+func isLatestRelease() bool {
+	githubReleaseApiObject := new(GithubReleaseApiObject)
+	getJson(RELEASE_API_URL, githubReleaseApiObject)
+	currentVer, err := version.NewVersion(VERSION)
+	if err != nil {
+		fmt.Println(err)
+		return true
+	}
+	lastVer, err := version.NewVersion(githubReleaseApiObject.Name)
+	if err != nil {
+		fmt.Println(err)
+		return true
+	}
+	if lastVer.GreaterThan(currentVer) {
+		return false
+	}
+	return true
 }
 
 // http://stackoverflow.com/a/35240286/1443726
@@ -652,5 +690,5 @@ func downloadFromUrl(dUrl string, filename string, path string) {
 
 func updateDiscordStatus() {
 	ImagesDownloaded++
-	dg.UpdateStatus(0, fmt.Sprintf("%d pictures downloaded (v%s)", ImagesDownloaded, VERSION))
+	dg.UpdateStatus(0, fmt.Sprintf("%d pictures downloaded", ImagesDownloaded))
 }
