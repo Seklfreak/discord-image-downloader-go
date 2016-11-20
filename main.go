@@ -45,7 +45,7 @@ var (
 )
 
 const (
-	VERSION                          string = "v1.12"
+	VERSION                          string = "1.12.1"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID                  string = "a39473314df3f59"
@@ -57,7 +57,7 @@ const (
 	REGEXP_URL_IMGUR_SINGLE          string = `^http(s?):\/\/(i\.)?imgur\.com\/[A-Za-z0-9]+(\.gifv)?$`
 	REGEXP_URL_IMGUR_ALBUM           string = `^http(s?):\/\/imgur\.com\/a\/[A-Za-z0-9]+$`
 	REGEXP_URL_GOOGLEDRIVE           string = `^http(s?):\/\/drive\.google\.com\/file\/d\/[^/]+\/view$`
-	REGEXP_URL_POSSIBLE_TISTORY_SITE string = `^http(s)?:\/\/[0-9a-zA-Z\.-]+\/(m\/)?[0-9]+$`
+	REGEXP_URL_POSSIBLE_TISTORY_SITE string = `^http(s)?:\/\/[0-9a-zA-Z\.-]+\/(m\/)?(photo\/)?[0-9]+$`
 )
 
 type GfycatObject struct {
@@ -498,10 +498,17 @@ func getGoogleDriveUrls(url string) (map[string]string, error) {
 }
 
 func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
-	respHead, err := http.Head(url)
+	client := new(http.Client)
+	request, err := http.NewRequest("HEAD", url, nil)
 	if err != nil {
 		return nil, err
 	}
+	request.Header.Add("Accept-Encoding", "identity")
+	respHead, err := client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
 	contentType := ""
 	for headerKey, headerValue := range respHead.Header {
 		if headerKey == "Content-Type" {
@@ -512,7 +519,17 @@ func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
 		return nil, nil
 	}
 
-	doc, err := goquery.NewDocument(url)
+	request, err = http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Accept-Encoding", "identity")
+	resp, err := client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	doc, err := goquery.NewDocumentFromResponse(resp)
 	if err != nil {
 		return nil, err
 	}
@@ -626,7 +643,14 @@ func downloadFromUrl(dUrl string, filename string, path string) {
 		return
 	}
 
-	response, err := http.Get(dUrl)
+	client := new(http.Client)
+	request, err := http.NewRequest("GET", dUrl, nil)
+	if err != nil {
+		fmt.Println("Error while downloading", dUrl, "-", err)
+		return
+	}
+	request.Header.Add("Accept-Encoding", "identity")
+	response, err := client.Do(request)
 	if err != nil {
 		fmt.Println("Error while downloading", dUrl, "-", err)
 		return
