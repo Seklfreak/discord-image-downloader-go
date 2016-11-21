@@ -43,10 +43,11 @@ var (
 	interactiveChannelLinkTemp   map[string]string
 	DiscordUserId                string
 	myDB                         *db.DB
+	historyCommandActive         map[string]string
 )
 
 const (
-	VERSION                          string = "1.13"
+	VERSION                          string = "1.13.1"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -124,6 +125,7 @@ func main() {
 	ChannelWhitelist = cfg.Section("channels").KeysHash()
 	InteractiveChannelWhitelist = cfg.Section("interactive channels").KeysHash()
 	interactiveChannelLinkTemp = make(map[string]string)
+	historyCommandActive = make(map[string]string)
 
 	RegexpUrlTwitter, err = regexp.Compile(REGEXP_URL_TWITTER)
 	if err != nil {
@@ -312,11 +314,13 @@ func handleDiscordMessage(m *discordgo.Message) {
 	} else if folderName, ok := InteractiveChannelWhitelist[m.ChannelID]; ok {
 		if DiscordUserId != "" && m.Author != nil && m.Author.ID != DiscordUserId {
 			dg.ChannelTyping(m.ChannelID)
-			switch message := strings.ToLower(m.Content); message {
-			case "help":
+			message := strings.ToLower(m.Content)
+			_, historyCommandIsActive := historyCommandActive[m.ChannelID]
+			switch {
+			case message == "help":
 				dg.ChannelMessageSend(m.ChannelID,
 					"**<link>** to download a link\n**version** to find out the version\n**stats** to view stats\n**channels** to list active channels\n**help** to open this help\n ")
-			case "version":
+			case message == "version":
 				dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("discord-image-downloder-go **v%s**", VERSION))
 				dg.ChannelTyping(m.ChannelID)
 				if isLatestRelease() {
@@ -324,7 +328,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 				} else {
 					dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("**update available on <%s>**", RELEASE_URL))
 				}
-			case "channels":
+			case message == "channels":
 				dg.ChannelMessageSend(m.ChannelID, "**channels**")
 				for channelId, channelFolder := range ChannelWhitelist {
 					channel, err := dg.Channel(channelId)
@@ -357,7 +361,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 						}
 					}
 				}
-			case "stats":
+			case message == "stats":
 				dg.ChannelTyping(m.ChannelID)
 				channelStats := make(map[string]int)
 				userStats := make(map[string]int)
@@ -411,6 +415,66 @@ func handleDiscordMessage(m *discordgo.Message) {
 						dg.ChannelMessageSend(m.ChannelID,
 							fmt.Sprintf("@%s: **%d** downloads", userId, downloads))
 					}
+				}
+			case message == "history", historyCommandIsActive:
+				i := 0
+				_, historyCommandIsSet := historyCommandActive[m.ChannelID]
+				if !historyCommandIsSet || historyCommandActive[m.ChannelID] == "" {
+					historyCommandActive[m.ChannelID] = ""
+					if folder, ok := ChannelWhitelist[m.Content]; ok {
+						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("downloading to `%s`", folder))
+						historyCommandActive[m.ChannelID] = "downloading"
+						lastBefore := ""
+						lastBeforeTime := ""
+					MessageRequestingLoop:
+						for true {
+							if lastBeforeTime != "" {
+								fmt.Printf("[%s] Requesting 100 more messages, (before %s)\n", time.Now().Format(time.Stamp), lastBeforeTime)
+								dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Requesting 100 more messages, (before %s)\n", lastBeforeTime))
+							}
+							messages, err := dg.ChannelMessages(m.Content, 100, lastBefore, "")
+							if err == nil {
+								if len(messages) <= 0 {
+									delete(historyCommandActive, m.ChannelID)
+									break MessageRequestingLoop
+								}
+								lastBefore = messages[len(messages)-1].ID
+								lastBeforeTime = messages[len(messages)-1].Timestamp
+								for _, message := range messages {
+									if historyCommandActive[m.ChannelID] == "cancel" {
+										delete(historyCommandActive, m.ChannelID)
+										break MessageRequestingLoop
+									}
+									for _, iAttachment := range message.Attachments {
+										if findDownloadedImageByUrl(iAttachment.URL) == nil {
+											i++
+											downloadFromUrl(iAttachment.URL, iAttachment.Filename, folder, m.ChannelID, m.Author.ID)
+										}
+									}
+									foundUrls := xurls.Strict.FindAllString(message.Content, -1)
+									for _, iFoundUrl := range foundUrls {
+										links := getDownloadLinks(iFoundUrl)
+										for link, filename := range links {
+											if findDownloadedImageByUrl(link) == nil {
+												i++
+												downloadFromUrl(link, filename, folder, m.ChannelID, m.Author.ID)
+											}
+										}
+									}
+								}
+							} else {
+								dg.ChannelMessageSend(m.ChannelID, err.Error())
+								fmt.Println(err)
+								delete(historyCommandActive, m.ChannelID)
+								break MessageRequestingLoop
+							}
+						}
+						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("done, %d pictures downloaded!", i))
+					} else {
+						dg.ChannelMessageSend(m.ChannelID, "please send me a channel id (from the whitelist)")
+					}
+				} else if historyCommandActive[m.ChannelID] == "downloading" && message == "cancel" {
+					historyCommandActive[m.ChannelID] = "cancel"
 				}
 			default:
 				if link, ok := interactiveChannelLinkTemp[m.ChannelID]; ok {
@@ -854,6 +918,18 @@ func findDownloadedImageById(id int) *DownloadedImage {
 		ChannelId:   readBack["ChannelId"].(string),
 		UserId:      readBack["UserId"].(string),
 	}
+}
+
+func findDownloadedImageByUrl(url string) *DownloadedImage {
+	var query interface{}
+	json.Unmarshal([]byte(fmt.Sprintf(`[{"eq": "%s", "in": ["Url"]}]`, url)), &query)
+	queryResult := make(map[int]struct{})
+	db.EvalQuery(query, myDB.Use("Downloads"), &queryResult)
+
+	for id := range queryResult {
+		return findDownloadedImageById(id)
+	}
+	return nil
 }
 
 func countDownloadedImages() int {
