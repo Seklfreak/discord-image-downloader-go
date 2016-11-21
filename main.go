@@ -47,7 +47,7 @@ var (
 )
 
 const (
-	VERSION                          string = "1.13.1"
+	VERSION                          string = "1.13.2"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -448,7 +448,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 									for _, iAttachment := range message.Attachments {
 										if findDownloadedImageByUrl(iAttachment.URL) == nil {
 											i++
-											downloadFromUrl(iAttachment.URL, iAttachment.Filename, folder, m.ChannelID, m.Author.ID)
+											downloadFromUrl(iAttachment.URL, iAttachment.Filename, folder, message.ChannelID, message.Author.ID)
 										}
 									}
 									foundUrls := xurls.Strict.FindAllString(message.Content, -1)
@@ -457,7 +457,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 										for link, filename := range links {
 											if findDownloadedImageByUrl(link) == nil {
 												i++
-												downloadFromUrl(link, filename, folder, m.ChannelID, m.Author.ID)
+												downloadFromUrl(link, filename, folder, message.ChannelID, message.Author.ID)
 											}
 										}
 									}
