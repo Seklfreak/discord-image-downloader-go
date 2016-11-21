@@ -30,4 +30,4 @@ config.ini
 crossbuild.bat
 
 testfolder/*
-database/
+database*/
