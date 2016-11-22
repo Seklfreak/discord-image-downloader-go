@@ -12,6 +12,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -47,7 +48,7 @@ var (
 )
 
 const (
-	VERSION                          string = "1.13.3"
+	VERSION                          string = "1.13.4"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -210,10 +211,7 @@ func main() {
 		u.Username)
 	DiscordUserId = u.ID
 
-	err = dg.UpdateStatus(1, "")
-	if err != nil {
-		fmt.Println("error setting idle status,", err)
-	}
+	updateDiscordStatus()
 
 	// keep program running until CTRL-C is pressed.
 	<-make(chan struct{})
@@ -384,19 +382,21 @@ func handleDiscordMessage(m *discordgo.Message) {
 					i++
 					return true
 				})
+				channelStatsSorted := sortStringIntMapByValue(channelStats)
+				userStatsSorted := sortStringIntMapByValue(userStats)
 				dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("I downloaded **%d** pictures in **%d** channels by **%d** users", i, len(channelStats), len(userStats)))
 				dg.ChannelMessageSend(m.ChannelID, "**channel breakdown**")
-				for channelId, downloads := range channelStats {
-					channel, err := dg.Channel(channelId)
+				for _, downloads := range channelStatsSorted {
+					channel, err := dg.Channel(downloads.Key)
 					if err == nil {
 						if channel.IsPrivate {
 							dg.ChannelMessageSend(m.ChannelID,
-								fmt.Sprintf("@%s (`#%s`): **%d** downloads", channel.Recipient.Username, channelId, downloads))
+								fmt.Sprintf("@%s (`#%s`): **%d** downloads", channel.Recipient.Username, downloads.Key, downloads.Value))
 						} else {
 							guild, err := dg.Guild(channel.GuildID)
 							if err == nil {
 								dg.ChannelMessageSend(m.ChannelID,
-									fmt.Sprintf("#%s/%s (`#%s`): **%d** downloads", guild.Name, channel.Name, channelId, downloads))
+									fmt.Sprintf("#%s/%s (`#%s`): **%d** downloads", guild.Name, channel.Name, downloads.Key, downloads.Value))
 							} else {
 								fmt.Println(err)
 							}
@@ -406,18 +406,18 @@ func handleDiscordMessage(m *discordgo.Message) {
 					}
 				}
 				dg.ChannelMessageSend(m.ChannelID, "**user breakdown**")
-				for userId, downloads := range userStats {
-					if guildId, ok := userGuilds[userId]; ok {
-						user, err := dg.GuildMember(guildId, userId)
+				for _, downloads := range userStatsSorted {
+					if guildId, ok := userGuilds[downloads.Key]; ok {
+						user, err := dg.GuildMember(guildId, downloads.Key)
 						if err == nil {
 							dg.ChannelMessageSend(m.ChannelID,
-								fmt.Sprintf("@%s: **%d** downloads", user.User.Username, downloads))
+								fmt.Sprintf("@%s: **%d** downloads", user.User.Username, downloads.Value))
 						} else {
 							fmt.Println(err)
 						}
 					} else {
 						dg.ChannelMessageSend(m.ChannelID,
-							fmt.Sprintf("@%s: **%d** downloads", userId, downloads))
+							fmt.Sprintf("@%s: **%d** downloads", downloads.Key, downloads.Value))
 					}
 				}
 			case message == "history", historyCommandIsActive:
@@ -477,7 +477,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 								break MessageRequestingLoop
 							}
 						}
-						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("done, %d pictures downloaded!", i))
+						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("done, %d download links started!", i))
 					} else {
 						dg.ChannelMessageSend(m.ChannelID, "please send me a channel id (from the whitelist)")
 					}
@@ -959,6 +959,29 @@ func countDownloadedImages() int {
 	return i
 	// fmt.Println(myDB.Use("Downloads").ApproxDocCount()) TODO?
 }
+
+// http://stackoverflow.com/a/18695740/1443726
+func sortStringIntMapByValue(m map[string]int) PairList {
+	pl := make(PairList, len(m))
+	i := 0
+	for k, v := range m {
+		pl[i] = Pair{k, v}
+		i++
+	}
+	sort.Sort(sort.Reverse(pl))
+	return pl
+}
+
+type Pair struct {
+	Key   string
+	Value int
+}
+
+type PairList []Pair
+
+func (p PairList) Len() int           { return len(p) }
+func (p PairList) Less(i, j int) bool { return p[i].Value < p[j].Value }
+func (p PairList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 func updateDiscordStatus() {
 	dg.UpdateStatus(0, fmt.Sprintf("%d pictures downloaded", countDownloadedImages()))
