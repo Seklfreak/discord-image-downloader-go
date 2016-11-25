@@ -45,6 +45,7 @@ var (
 	DiscordUserId                string
 	myDB                         *db.DB
 	historyCommandActive         map[string]string
+	MaxDownloadRetries           int
 )
 
 const (
@@ -94,6 +95,7 @@ func main() {
 		cfg.Section("auth").NewKey("password", "yourpassword")
 		cfg.Section("general").NewKey("skip edits", "true")
 		cfg.Section("general").NewKey("download tistory sites", "false")
+		cfg.Section("general").NewKey("max download retries", "3")
 		cfg.Section("channels").NewKey("channelid1", "C:\\full\\path\\1")
 		cfg.Section("channels").NewKey("channelid2", "C:\\full\\path\\2")
 		cfg.Section("channels").NewKey("channelid3", "C:\\full\\path\\3")
@@ -195,6 +197,7 @@ func main() {
 	}
 
 	DownloadTistorySites = cfg.Section("general").Key("download tistory sites").MustBool()
+	MaxDownloadRetries = cfg.Section("general").Key("max download retries").MustInt(3)
 
 	err = dg.Open()
 	if err != nil {
@@ -308,13 +311,13 @@ func handleDiscordMessage(m *discordgo.Message) {
 			}
 		}
 		for _, iAttachment := range m.Attachments {
-			downloadFromUrl(iAttachment.URL, iAttachment.Filename, folderName, m.ChannelID, m.Author.ID, fileTime)
+			startDownload(iAttachment.URL, iAttachment.Filename, folderName, m.ChannelID, m.Author.ID, fileTime)
 		}
 		foundUrls := xurls.Strict.FindAllString(m.Content, -1)
 		for _, iFoundUrl := range foundUrls {
 			links := getDownloadLinks(iFoundUrl)
 			for link, filename := range links {
-				downloadFromUrl(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
+				startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
 			}
 		}
 	} else if folderName, ok := InteractiveChannelWhitelist[m.ChannelID]; ok {
@@ -463,7 +466,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 									for _, iAttachment := range message.Attachments {
 										if findDownloadedImageByUrl(iAttachment.URL) == nil {
 											i++
-											downloadFromUrl(iAttachment.URL, iAttachment.Filename, folder, message.ChannelID, message.Author.ID, fileTime)
+											startDownload(iAttachment.URL, iAttachment.Filename, folder, message.ChannelID, message.Author.ID, fileTime)
 										}
 									}
 									foundUrls := xurls.Strict.FindAllString(message.Content, -1)
@@ -472,7 +475,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 										for link, filename := range links {
 											if findDownloadedImageByUrl(link) == nil {
 												i++
-												downloadFromUrl(link, filename, folder, message.ChannelID, message.Author.ID, fileTime)
+												startDownload(link, filename, folder, message.ChannelID, message.Author.ID, fileTime)
 											}
 										}
 									}
@@ -507,7 +510,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 						delete(interactiveChannelLinkTemp, m.ChannelID)
 						links := getDownloadLinks(link)
 						for linkR, filename := range links {
-							downloadFromUrl(linkR, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
+							startDownload(linkR, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
 						}
 						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> finished", link))
 					} else if strings.ToLower(m.Content) == "cancel" {
@@ -519,7 +522,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 						delete(interactiveChannelLinkTemp, m.ChannelID)
 						links := getDownloadLinks(link)
 						for linkR, filename := range links {
-							downloadFromUrl(linkR, filename, m.Content, m.ChannelID, m.Author.ID, fileTime)
+							startDownload(linkR, filename, m.Content, m.ChannelID, m.Author.ID, fileTime)
 						}
 						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> finished", link))
 					} else {
@@ -819,24 +822,34 @@ func filenameFromUrl(dUrl string) string {
 	return parts[0]
 }
 
-func downloadFromUrl(dUrl string, filename string, path string, channelId string, userId string, fileTime time.Time) {
+func startDownload(dUrl string, filename string, path string, channelId string, userId string, fileTime time.Time) {
+	for i := 0; i < MaxDownloadRetries; i++ {
+		if downloadFromUrl(dUrl, filename, path, channelId, userId, fileTime) {
+			break
+		} else {
+			time.Sleep(5 * time.Second)
+		}
+	}
+}
+
+func downloadFromUrl(dUrl string, filename string, path string, channelId string, userId string, fileTime time.Time) bool {
 	err := os.MkdirAll(path, 755)
 	if err != nil {
 		fmt.Println("Error while creating folder", path, "-", err)
-		return
+		return false
 	}
 
 	client := new(http.Client)
 	request, err := http.NewRequest("GET", dUrl, nil)
 	if err != nil {
 		fmt.Println("Error while downloading", dUrl, "-", err)
-		return
+		return false
 	}
 	request.Header.Add("Accept-Encoding", "identity")
 	response, err := client.Do(request)
 	if err != nil {
 		fmt.Println("Error while downloading", dUrl, "-", err)
-		return
+		return false
 	}
 	defer response.Body.Close()
 
@@ -876,19 +889,19 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 	bodyOfResp, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		fmt.Println("Could not read response", dUrl, "-", err)
-		return
+		return false
 	}
 	contentType := http.DetectContentType(bodyOfResp)
 	contentTypeParts := strings.Split(contentType, "/")
 	if contentTypeParts[0] != "image" && contentTypeParts[0] != "video" {
 		fmt.Println("No image or video found at", dUrl)
-		return
+		return true
 	}
 
 	err = ioutil.WriteFile(completePath, bodyOfResp, 0644)
 	if err != nil {
 		fmt.Println("Error while writing to disk", dUrl, "-", err)
-		return
+		return false
 	}
 
 	err = os.Chtimes(completePath, fileTime, fileTime)
@@ -903,6 +916,7 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 	}
 
 	updateDiscordStatus()
+	return true
 }
 
 type DownloadedImage struct {
