@@ -411,8 +411,8 @@ func handleDiscordMessage(m *discordgo.Message) {
 				userI := 0
 				for _, downloads := range userStatsSorted {
 					userI++
-					if userI > 15 {
-						replyMessage += "_only the top 15 users get shown_\n"
+					if userI > 10 {
+						replyMessage += "_only the top 10 users get shown_\n"
 						break
 					}
 					if guildId, ok := userGuilds[downloads.Key]; ok {
@@ -420,10 +420,10 @@ func handleDiscordMessage(m *discordgo.Message) {
 						if err == nil {
 							replyMessage += fmt.Sprintf("@%s: **%d** downloads\n", user.User.Username, downloads.Value)
 						} else {
-							fmt.Println(err)
+							replyMessage += fmt.Sprintf("@`%s`: **%d** downloads\n", downloads.Key, downloads.Value)
 						}
 					} else {
-						replyMessage += fmt.Sprintf("@%s: **%d** downloads\n", downloads.Key, downloads.Value)
+						replyMessage += fmt.Sprintf("@`%s`: **%d** downloads\n", downloads.Key, downloads.Value)
 					}
 				}
 				dg.ChannelMessageSend(m.ChannelID, replyMessage)
