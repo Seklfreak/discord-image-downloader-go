@@ -48,7 +48,7 @@ var (
 )
 
 const (
-	VERSION                          string = "1.13.4"
+	VERSION                          string = "1.13.5"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -299,9 +299,13 @@ func getDownloadLinks(url string) map[string]string {
 
 func handleDiscordMessage(m *discordgo.Message) {
 	if folderName, ok := ChannelWhitelist[m.ChannelID]; ok {
-		fileTime, err := time.Parse(time.RFC3339Nano, m.Timestamp)
-		if err != nil {
-			fmt.Println(err)
+		fileTime := time.Now()
+		var err error
+		if m.Timestamp != "" {
+			fileTime, err = time.Parse(time.RFC3339Nano, m.Timestamp)
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 		for _, iAttachment := range m.Attachments {
 			downloadFromUrl(iAttachment.URL, iAttachment.Filename, folderName, m.ChannelID, m.Author.ID, fileTime)
@@ -331,38 +335,35 @@ func handleDiscordMessage(m *discordgo.Message) {
 					dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("**update available on <%s>**", RELEASE_URL))
 				}
 			case message == "channels":
-				dg.ChannelMessageSend(m.ChannelID, "**channels**")
+				replyMessage := "**channels**\n"
 				for channelId, channelFolder := range ChannelWhitelist {
 					channel, err := dg.Channel(channelId)
 					if err == nil {
 						if channel.IsPrivate {
-							dg.ChannelMessageSend(m.ChannelID,
-								fmt.Sprintf("@%s (`#%s`): `%s`", channel.Recipient.Username, channelId, channelFolder))
+							replyMessage += fmt.Sprintf("@%s (`#%s`): `%s`\n", channel.Recipient.Username, channelId, channelFolder)
 						} else {
 							guild, err := dg.Guild(channel.GuildID)
 							if err == nil {
-								dg.ChannelMessageSend(m.ChannelID,
-									fmt.Sprintf("#%s/%s (`#%s`): `%s`", guild.Name, channel.Name, channelId, channelFolder))
+								replyMessage += fmt.Sprintf("#%s/%s (`#%s`): `%s`\n", guild.Name, channel.Name, channelId, channelFolder)
 							}
 						}
 					}
 				}
-				dg.ChannelMessageSend(m.ChannelID, "**interactive channels**")
+				replyMessage += "**interactive channels**\n"
 				for channelId, channelFolder := range InteractiveChannelWhitelist {
 					channel, err := dg.Channel(channelId)
 					if err == nil {
 						if channel.IsPrivate {
-							dg.ChannelMessageSend(m.ChannelID,
-								fmt.Sprintf("@%s (`#%s`): `%s`", channel.Recipient.Username, channelId, channelFolder))
+							replyMessage += fmt.Sprintf("@%s (`#%s`): `%s`\n", channel.Recipient.Username, channelId, channelFolder)
 						} else {
 							guild, err := dg.Guild(channel.GuildID)
 							if err == nil {
-								dg.ChannelMessageSend(m.ChannelID,
-									fmt.Sprintf("#%s/%s (`#%s`): `%s`", guild.Name, channel.Name, channelId, channelFolder))
+								replyMessage += fmt.Sprintf("#%s/%s (`#%s`): `%s`\n", guild.Name, channel.Name, channelId, channelFolder)
 							}
 						}
 					}
 				}
+				dg.ChannelMessageSend(m.ChannelID, replyMessage)
 			case message == "stats":
 				dg.ChannelTyping(m.ChannelID)
 				channelStats := make(map[string]int)
@@ -384,19 +385,17 @@ func handleDiscordMessage(m *discordgo.Message) {
 				})
 				channelStatsSorted := sortStringIntMapByValue(channelStats)
 				userStatsSorted := sortStringIntMapByValue(userStats)
-				dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("I downloaded **%d** pictures in **%d** channels by **%d** users", i, len(channelStats), len(userStats)))
-				dg.ChannelMessageSend(m.ChannelID, "**channel breakdown**")
+				replyMessage := fmt.Sprintf("I downloaded **%d** pictures in **%d** channels by **%d** users\n", i, len(channelStats), len(userStats))
+				replyMessage += "**channel breakdown**\n"
 				for _, downloads := range channelStatsSorted {
 					channel, err := dg.Channel(downloads.Key)
 					if err == nil {
 						if channel.IsPrivate {
-							dg.ChannelMessageSend(m.ChannelID,
-								fmt.Sprintf("@%s (`#%s`): **%d** downloads", channel.Recipient.Username, downloads.Key, downloads.Value))
+							replyMessage += fmt.Sprintf("@%s (`#%s`): **%d** downloads\n", channel.Recipient.Username, downloads.Key, downloads.Value)
 						} else {
 							guild, err := dg.Guild(channel.GuildID)
 							if err == nil {
-								dg.ChannelMessageSend(m.ChannelID,
-									fmt.Sprintf("#%s/%s (`#%s`): **%d** downloads", guild.Name, channel.Name, downloads.Key, downloads.Value))
+								replyMessage += fmt.Sprintf("#%s/%s (`#%s`): **%d** downloads\n", guild.Name, channel.Name, downloads.Key, downloads.Value)
 							} else {
 								fmt.Println(err)
 							}
@@ -405,21 +404,26 @@ func handleDiscordMessage(m *discordgo.Message) {
 						fmt.Println(err)
 					}
 				}
-				dg.ChannelMessageSend(m.ChannelID, "**user breakdown**")
+				replyMessage += "**user breakdown**\n"
+				userI := 0
 				for _, downloads := range userStatsSorted {
+					userI++
+					if userI > 15 {
+						replyMessage += "_only the top 15 users get shown_\n"
+						break
+					}
 					if guildId, ok := userGuilds[downloads.Key]; ok {
 						user, err := dg.GuildMember(guildId, downloads.Key)
 						if err == nil {
-							dg.ChannelMessageSend(m.ChannelID,
-								fmt.Sprintf("@%s: **%d** downloads", user.User.Username, downloads.Value))
+							replyMessage += fmt.Sprintf("@%s: **%d** downloads\n", user.User.Username, downloads.Value)
 						} else {
 							fmt.Println(err)
 						}
 					} else {
-						dg.ChannelMessageSend(m.ChannelID,
-							fmt.Sprintf("@%s: **%d** downloads", downloads.Key, downloads.Value))
+						replyMessage += fmt.Sprintf("@%s: **%d** downloads\n", downloads.Key, downloads.Value)
 					}
 				}
+				dg.ChannelMessageSend(m.ChannelID, replyMessage)
 			case message == "history", historyCommandIsActive:
 				i := 0
 				_, historyCommandIsSet := historyCommandActive[m.ChannelID]
@@ -445,9 +449,12 @@ func handleDiscordMessage(m *discordgo.Message) {
 								lastBefore = messages[len(messages)-1].ID
 								lastBeforeTime = messages[len(messages)-1].Timestamp
 								for _, message := range messages {
-									fileTime, err := time.Parse(time.RFC3339Nano, message.Timestamp)
-									if err != nil {
-										fmt.Println(err)
+									fileTime := time.Now()
+									if m.Timestamp != "" {
+										fileTime, err = time.Parse(time.RFC3339Nano, message.Timestamp)
+										if err != nil {
+											fmt.Println(err)
+										}
 									}
 									if historyCommandActive[m.ChannelID] == "cancel" {
 										delete(historyCommandActive, m.ChannelID)
@@ -486,9 +493,13 @@ func handleDiscordMessage(m *discordgo.Message) {
 				}
 			default:
 				if link, ok := interactiveChannelLinkTemp[m.ChannelID]; ok {
-					fileTime, err := time.Parse(time.RFC3339Nano, m.Timestamp)
-					if err != nil {
-						fmt.Println(err)
+					fileTime := time.Now()
+					var err error
+					if m.Timestamp != "" {
+						fileTime, err = time.Parse(time.RFC3339Nano, m.Timestamp)
+						if err != nil {
+							fmt.Println(err)
+						}
 					}
 					if m.Content == "." {
 						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> started", link))
