@@ -39,6 +39,8 @@ var (
 	RegexpUrlImgurAlbum          *regexp.Regexp
 	RegexpUrlGoogleDrive         *regexp.Regexp
 	RegexpUrlPossibleTistorySite *regexp.Regexp
+	RegexpUrlFlickrPhoto         *regexp.Regexp
+	RegexpUrlFlickrAlbum         *regexp.Regexp
 	dg                           *discordgo.Session
 	DownloadTistorySites         bool
 	interactiveChannelLinkTemp   map[string]string
@@ -46,10 +48,11 @@ var (
 	myDB                         *db.DB
 	historyCommandActive         map[string]string
 	MaxDownloadRetries           int
+	flickrApiKey                 string
 )
 
 const (
-	VERSION                          string = "1.13.5"
+	VERSION                          string = "1.14"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -63,6 +66,8 @@ const (
 	REGEXP_URL_IMGUR_ALBUM           string = `^http(s?):\/\/imgur\.com\/a\/[A-Za-z0-9]+$`
 	REGEXP_URL_GOOGLEDRIVE           string = `^http(s?):\/\/drive\.google\.com\/file\/d\/[^/]+\/view$`
 	REGEXP_URL_POSSIBLE_TISTORY_SITE string = `^http(s)?:\/\/[0-9a-zA-Z\.-]+\/(m\/)?(photo\/)?[0-9]+$`
+	REGEXP_URL_FLICKR_PHOTO          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/([0-9]+)(\/)?(\/in\/album-([0-9]+)(\/)?)?$`
+	REGEXP_URL_FLICKR_ALBUM          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/albums\/(with\/)?([0-9]+)(\/)?$`
 )
 
 type GfycatObject struct {
@@ -99,6 +104,7 @@ func main() {
 		cfg.Section("channels").NewKey("channelid1", "C:\\full\\path\\1")
 		cfg.Section("channels").NewKey("channelid2", "C:\\full\\path\\2")
 		cfg.Section("channels").NewKey("channelid3", "C:\\full\\path\\3")
+		cfg.Section("flickr").NewKey("api key", "yourflickrapikey")
 		err = cfg.SaveTo("config.ini")
 
 		if err != nil {
@@ -129,6 +135,7 @@ func main() {
 	InteractiveChannelWhitelist = cfg.Section("interactive channels").KeysHash()
 	interactiveChannelLinkTemp = make(map[string]string)
 	historyCommandActive = make(map[string]string)
+	flickrApiKey = cfg.Section("flickr").Key("api key").MustString("yourflickrapikey")
 
 	RegexpUrlTwitter, err = regexp.Compile(REGEXP_URL_TWITTER)
 	if err != nil {
@@ -171,6 +178,16 @@ func main() {
 		return
 	}
 	RegexpUrlPossibleTistorySite, err = regexp.Compile(REGEXP_URL_POSSIBLE_TISTORY_SITE)
+	if err != nil {
+		fmt.Println("Regexp error", err)
+		return
+	}
+	RegexpUrlFlickrPhoto, err = regexp.Compile(REGEXP_URL_FLICKR_PHOTO)
+	if err != nil {
+		fmt.Println("Regexp error", err)
+		return
+	}
+	RegexpUrlFlickrAlbum, err = regexp.Compile(REGEXP_URL_FLICKR_ALBUM)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
@@ -283,6 +300,22 @@ func getDownloadLinks(url string) map[string]string {
 		links, err := getGoogleDriveUrls(url)
 		if err != nil {
 			fmt.Println("google drive album url failed, ", url, ",", err)
+		} else if len(links) > 0 {
+			return links
+		}
+	}
+	if RegexpUrlFlickrPhoto.MatchString(url) {
+		links, err := getFlickrPhotoUrls(url)
+		if err != nil {
+			fmt.Println("flickr photo url failed, ", url, ",", err)
+		} else if len(links) > 0 {
+			return links
+		}
+	}
+	if RegexpUrlFlickrAlbum.MatchString(url) {
+		links, err := getFlickrAlbumUrls(url)
+		if err != nil {
+			fmt.Println("flickr album url failed, ", url, ",", err)
 		} else if len(links) > 0 {
 			return links
 		}
@@ -681,6 +714,103 @@ func getGoogleDriveUrls(url string) (map[string]string, error) {
 		fileId := parts[len(parts)-2]
 		return map[string]string{"https://drive.google.com/uc?export=download&id=" + fileId: ""}, nil
 	}
+}
+
+type FlickrPhotoSizeObject struct {
+	Label  string `json:"label"`
+	Width  int    `json:"width,int,string"`
+	Height int    `json:"height,int,string"`
+	Source string `json:"source"`
+	URL    string `json:"url"`
+	Media  string `json:"media"`
+}
+
+type FlickrPhotoObject struct {
+	Sizes struct {
+		Canblog     int                     `json:"canblog"`
+		Canprint    int                     `json:"canprint"`
+		Candownload int                     `json:"candownload"`
+		Size        []FlickrPhotoSizeObject `json:"size"`
+	} `json:"sizes"`
+	Stat string `json:"stat"`
+}
+
+func getFlickrUrlFromPhotoId(photoId string) string {
+	reqUrl := fmt.Sprintf("https://www.flickr.com/services/rest/?format=json&nojsoncallback=1&method=%s&api_key=%s&photo_id=%s",
+		"flickr.photos.getSizes", flickrApiKey, photoId)
+	flickrPhoto := new(FlickrPhotoObject)
+	getJson(reqUrl, flickrPhoto)
+	var bestSize FlickrPhotoSizeObject
+	for _, size := range flickrPhoto.Sizes.Size {
+		if bestSize.Label == "" {
+			bestSize = size
+		} else {
+			if size.Width > bestSize.Width || size.Height > bestSize.Height {
+				bestSize = size
+			}
+		}
+	}
+	return bestSize.Source
+}
+
+func getFlickrPhotoUrls(url string) (map[string]string, error) {
+	if flickrApiKey == "" || flickrApiKey == "yourflickrapikey" {
+		return nil, errors.New("invalid flickr api key set")
+	}
+	matches := RegexpUrlFlickrPhoto.FindStringSubmatch(url)
+	photoId := matches[5]
+	if photoId == "" {
+		return nil, errors.New("unable to get photo id from url")
+	}
+	return map[string]string{getFlickrUrlFromPhotoId(photoId): ""}, nil
+}
+
+type FlickrAlbumObject struct {
+	Photoset struct {
+		ID        string `json:"id"`
+		Primary   string `json:"primary"`
+		Owner     string `json:"owner"`
+		Ownername string `json:"ownername"`
+		Photo     []struct {
+			ID        string `json:"id"`
+			Secret    string `json:"secret"`
+			Server    string `json:"server"`
+			Farm      int    `json:"farm"`
+			Title     string `json:"title"`
+			Isprimary string `json:"isprimary"`
+			Ispublic  int    `json:"ispublic"`
+			Isfriend  int    `json:"isfriend"`
+			Isfamily  int    `json:"isfamily"`
+		} `json:"photo"`
+		Page    int    `json:"page"`
+		PerPage int    `json:"per_page"`
+		Perpage int    `json:"perpage"`
+		Pages   int    `json:"pages"`
+		Total   string `json:"total"`
+		Title   string `json:"title"`
+	} `json:"photoset"`
+	Stat string `json:"stat"`
+}
+
+func getFlickrAlbumUrls(url string) (map[string]string, error) {
+	if flickrApiKey == "" || flickrApiKey == "yourflickrapikey" {
+		return nil, errors.New("invalid flickr api key set")
+	}
+	matches := RegexpUrlFlickrAlbum.FindStringSubmatch(url)
+	albumId := matches[6]
+	if albumId == "" {
+		return nil, errors.New("unable to get album id from url")
+	}
+	reqUrl := fmt.Sprintf("https://www.flickr.com/services/rest/?format=json&nojsoncallback=1&method=%s&api_key=%s&photoset_id=%s&per_page=500",
+		"flickr.photosets.getPhotos", flickrApiKey, albumId)
+	flickrAlbum := new(FlickrAlbumObject)
+	getJson(reqUrl, flickrAlbum)
+	links := make(map[string]string)
+	for _, photo := range flickrAlbum.Photoset.Photo {
+		links[getFlickrUrlFromPhotoId(photo.ID)] = ""
+	}
+	fmt.Printf("[%s] Found flickr album with %d images (url: %s)\n", time.Now().Format(time.Stamp), len(links), url)
+	return links, nil
 }
 
 func getPossibleTistorySiteUrls(url string) (map[string]string, error) {

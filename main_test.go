@@ -1,6 +1,8 @@
 package main
 
 import (
+	"gopkg.in/ini.v1"
+	"os"
 	"reflect"
 	"regexp"
 	"strings"
@@ -17,6 +19,15 @@ func init() {
 	RegexpUrlImgurAlbum, _ = regexp.Compile(REGEXP_URL_IMGUR_ALBUM)
 	RegexpUrlGoogleDrive, _ = regexp.Compile(REGEXP_URL_GOOGLEDRIVE)
 	RegexpUrlPossibleTistorySite, _ = regexp.Compile(REGEXP_URL_POSSIBLE_TISTORY_SITE)
+	RegexpUrlFlickrPhoto, _ = regexp.Compile(REGEXP_URL_FLICKR_PHOTO)
+	RegexpUrlFlickrAlbum, _ = regexp.Compile(REGEXP_URL_FLICKR_ALBUM)
+	flickrApiKey = os.Getenv("FLICKR_API_KEY")
+
+	var err error
+	cfg, err := ini.Load("config.ini")
+	if err == nil {
+		flickrApiKey = cfg.Section("flickr").Key("api key").MustString("yourflickrapikey")
+	}
 }
 
 type urlsTestpair struct {
@@ -270,6 +281,148 @@ var getPossibleTistorySiteUrlsTests = []urlsTestpair{
 func TestGetPossibleTistorySiteUrls(t *testing.T) {
 	for _, pair := range getPossibleTistorySiteUrlsTests {
 		v, err := getPossibleTistorySiteUrls(pair.value)
+		if err != nil {
+			t.Errorf("For %v, expected %v, got %v", pair.value, nil, err)
+		}
+		if !reflect.DeepEqual(v, pair.result) {
+			t.Errorf("For %s, expected %s, got %s", pair.value, pair.result, v)
+		}
+	}
+}
+
+var getFlickrUrlFromPhotoIdTests = []map[string]string{
+	{
+		"value":  "31065043320",
+		"result": "https://farm6.staticflickr.com/5521/31065043320_cd03a9a448_b.jpg",
+	},
+}
+
+func TestGetFlickrUrlFromPhotoId(t *testing.T) {
+	for _, pair := range getFlickrUrlFromPhotoIdTests {
+		v := getFlickrUrlFromPhotoId(pair["value"])
+		if v != pair["result"] {
+			t.Errorf("For %s, expected %s, got %s", pair["value"], pair["result"], v)
+		}
+	}
+}
+
+var getFlickrPhotoUrlsTests = []urlsTestpair{
+	{
+		"https://www.flickr.com/photos/137385017@N08/31065043320/in/album-72157677350305446/",
+		map[string]string{
+			"https://farm6.staticflickr.com/5521/31065043320_cd03a9a448_b.jpg": "",
+		},
+	},
+	{
+		"https://www.flickr.com/photos/137385017@N08/31065043320/in/album-72157677350305446",
+		map[string]string{
+			"https://farm6.staticflickr.com/5521/31065043320_cd03a9a448_b.jpg": "",
+		},
+	},
+	{
+		"https://www.flickr.com/photos/137385017@N08/31065043320/",
+		map[string]string{
+			"https://farm6.staticflickr.com/5521/31065043320_cd03a9a448_b.jpg": "",
+		},
+	},
+	{
+		"https://www.flickr.com/photos/137385017@N08/31065043320",
+		map[string]string{
+			"https://farm6.staticflickr.com/5521/31065043320_cd03a9a448_b.jpg": "",
+		},
+	},
+}
+
+func TestGetFlickrPhotoUrls(t *testing.T) {
+	for _, pair := range getFlickrPhotoUrlsTests {
+		v, err := getFlickrPhotoUrls(pair.value)
+		if err != nil {
+			t.Errorf("For %v, expected %v, got %v", pair.value, nil, err)
+		}
+		if !reflect.DeepEqual(v, pair.result) {
+			t.Errorf("For %s, expected %s, got %s", pair.value, pair.result, v)
+		}
+	}
+}
+
+var getFlickrAlbumUrlsTests = []urlsTestpair{
+	{
+		"https://www.flickr.com/photos/137385017@N08/albums/72157677350305446/",
+		map[string]string{
+			"https://farm6.staticflickr.com/5521/31065043320_cd03a9a448_b.jpg": "",
+			"https://farm6.staticflickr.com/5651/31434767515_49f88ee12e_b.jpg": "",
+			"https://farm6.staticflickr.com/5750/31434766825_529fd08071_b.jpg": "",
+			"https://farm6.staticflickr.com/5811/31319456971_37c8c4708a_b.jpg": "",
+			"https://farm6.staticflickr.com/5494/30627074913_b7f810fc26_b.jpg": "",
+			"https://farm6.staticflickr.com/5539/31065042720_d76f643b28_b.jpg": "",
+			"https://farm6.staticflickr.com/5813/31434765285_94b85d5e8c_b.jpg": "",
+			"https://farm6.staticflickr.com/5600/31065044090_eca63bd5a5_b.jpg": "",
+			"https://farm6.staticflickr.com/5733/31434764435_350825477e_b.jpg": "",
+			"https://farm6.staticflickr.com/5715/30627073573_b86e4b2c22_b.jpg": "",
+			"https://farm6.staticflickr.com/5758/31289864222_5e3cca7e72_b.jpg": "",
+			"https://farm6.staticflickr.com/5801/30627076673_5a32f3e562_b.jpg": "",
+			"https://farm6.staticflickr.com/5538/31319458901_088858d7f1_b.jpg": "",
+		},
+	},
+	{
+		"https://www.flickr.com/photos/137385017@N08/albums/72157677350305446",
+		map[string]string{
+			"https://farm6.staticflickr.com/5521/31065043320_cd03a9a448_b.jpg": "",
+			"https://farm6.staticflickr.com/5651/31434767515_49f88ee12e_b.jpg": "",
+			"https://farm6.staticflickr.com/5750/31434766825_529fd08071_b.jpg": "",
+			"https://farm6.staticflickr.com/5811/31319456971_37c8c4708a_b.jpg": "",
+			"https://farm6.staticflickr.com/5494/30627074913_b7f810fc26_b.jpg": "",
+			"https://farm6.staticflickr.com/5539/31065042720_d76f643b28_b.jpg": "",
+			"https://farm6.staticflickr.com/5813/31434765285_94b85d5e8c_b.jpg": "",
+			"https://farm6.staticflickr.com/5600/31065044090_eca63bd5a5_b.jpg": "",
+			"https://farm6.staticflickr.com/5733/31434764435_350825477e_b.jpg": "",
+			"https://farm6.staticflickr.com/5715/30627073573_b86e4b2c22_b.jpg": "",
+			"https://farm6.staticflickr.com/5758/31289864222_5e3cca7e72_b.jpg": "",
+			"https://farm6.staticflickr.com/5801/30627076673_5a32f3e562_b.jpg": "",
+			"https://farm6.staticflickr.com/5538/31319458901_088858d7f1_b.jpg": "",
+		},
+	},
+	{
+		"https://www.flickr.com/photos/137385017@N08/albums/with/72157677350305446/",
+		map[string]string{
+			"https://farm6.staticflickr.com/5521/31065043320_cd03a9a448_b.jpg": "",
+			"https://farm6.staticflickr.com/5651/31434767515_49f88ee12e_b.jpg": "",
+			"https://farm6.staticflickr.com/5750/31434766825_529fd08071_b.jpg": "",
+			"https://farm6.staticflickr.com/5811/31319456971_37c8c4708a_b.jpg": "",
+			"https://farm6.staticflickr.com/5494/30627074913_b7f810fc26_b.jpg": "",
+			"https://farm6.staticflickr.com/5539/31065042720_d76f643b28_b.jpg": "",
+			"https://farm6.staticflickr.com/5813/31434765285_94b85d5e8c_b.jpg": "",
+			"https://farm6.staticflickr.com/5600/31065044090_eca63bd5a5_b.jpg": "",
+			"https://farm6.staticflickr.com/5733/31434764435_350825477e_b.jpg": "",
+			"https://farm6.staticflickr.com/5715/30627073573_b86e4b2c22_b.jpg": "",
+			"https://farm6.staticflickr.com/5758/31289864222_5e3cca7e72_b.jpg": "",
+			"https://farm6.staticflickr.com/5801/30627076673_5a32f3e562_b.jpg": "",
+			"https://farm6.staticflickr.com/5538/31319458901_088858d7f1_b.jpg": "",
+		},
+	},
+	{
+		"https://www.flickr.com/photos/137385017@N08/albums/with/72157677350305446",
+		map[string]string{
+			"https://farm6.staticflickr.com/5521/31065043320_cd03a9a448_b.jpg": "",
+			"https://farm6.staticflickr.com/5651/31434767515_49f88ee12e_b.jpg": "",
+			"https://farm6.staticflickr.com/5750/31434766825_529fd08071_b.jpg": "",
+			"https://farm6.staticflickr.com/5811/31319456971_37c8c4708a_b.jpg": "",
+			"https://farm6.staticflickr.com/5494/30627074913_b7f810fc26_b.jpg": "",
+			"https://farm6.staticflickr.com/5539/31065042720_d76f643b28_b.jpg": "",
+			"https://farm6.staticflickr.com/5813/31434765285_94b85d5e8c_b.jpg": "",
+			"https://farm6.staticflickr.com/5600/31065044090_eca63bd5a5_b.jpg": "",
+			"https://farm6.staticflickr.com/5733/31434764435_350825477e_b.jpg": "",
+			"https://farm6.staticflickr.com/5715/30627073573_b86e4b2c22_b.jpg": "",
+			"https://farm6.staticflickr.com/5758/31289864222_5e3cca7e72_b.jpg": "",
+			"https://farm6.staticflickr.com/5801/30627076673_5a32f3e562_b.jpg": "",
+			"https://farm6.staticflickr.com/5538/31319458901_088858d7f1_b.jpg": "",
+		},
+	},
+}
+
+func TestGetFlickrAlbumUrls(t *testing.T) {
+	for _, pair := range getFlickrAlbumUrlsTests {
+		v, err := getFlickrAlbumUrls(pair.value)
 		if err != nil {
 			t.Errorf("For %v, expected %v, got %v", pair.value, nil, err)
 		}
