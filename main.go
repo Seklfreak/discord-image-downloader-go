@@ -20,6 +20,8 @@ import (
 	"github.com/HouzuoGuo/tiedot/db"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/bwmarrin/discordgo"
+	"github.com/dghubble/go-twitter/twitter"
+	"github.com/dghubble/oauth1"
 	"github.com/hashicorp/go-version"
 	"github.com/mvdan/xurls"
 	"golang.org/x/net/html"
@@ -31,6 +33,7 @@ var (
 	InteractiveChannelWhitelist  map[string]string
 	BaseDownloadPath             string
 	RegexpUrlTwitter             *regexp.Regexp
+	RegexpUrlTwitterStatus       *regexp.Regexp
 	RegexpUrlTistory             *regexp.Regexp
 	RegexpUrlTistoryWithCDN      *regexp.Regexp
 	RegexpUrlGfycat              *regexp.Regexp
@@ -49,15 +52,20 @@ var (
 	historyCommandActive         map[string]string
 	MaxDownloadRetries           int
 	flickrApiKey                 string
+	twitterConsumerKey           string
+	twitterConsumerSecret        string
+	twitterAccessToken           string
+	twitterAccessTokenSecret     string
 )
 
 const (
-	VERSION                          string = "1.14"
+	VERSION                          string = "1.15"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID                  string = "a39473314df3f59"
 	REGEXP_URL_TWITTER               string = `^http(s?):\/\/pbs\.twimg\.com\/media\/[^\./]+\.(jpg|png)((\:[a-z]+)?)$`
+	REGEXP_URL_TWITTER_STATUS        string = `^http(s?):\/\/(www\.)?twitter\.com\/([A-Za-z0-9-_\.]+\/status\/|statuses\/)([0-9]+)$`
 	REGEXP_URL_TISTORY               string = `^http(s?):\/\/[a-z0-9]+\.uf\.tistory\.com\/(image|original)\/[A-Z0-9]+$`
 	REGEXP_URL_TISTORY_WITH_CDN      string = `^http(s)?:\/\/[0-9a-z]+.daumcdn.net\/[a-z]+\/[a-zA-Z0-9\.]+\/\?scode=mtistory&fname=http(s?)%3A%2F%2F[a-z0-9]+\.uf\.tistory\.com%2F(image|original)%2F[A-Z0-9]+$`
 	REGEXP_URL_GFYCAT                string = `^http(s?):\/\/gfycat\.com\/[A-Za-z]+$`
@@ -97,14 +105,18 @@ func main() {
 		!cfg.Section("auth").HasKey("password")) &&
 		!cfg.Section("auth").HasKey("token") {
 		cfg.Section("auth").NewKey("email", "your@email.com")
-		cfg.Section("auth").NewKey("password", "yourpassword")
+		cfg.Section("auth").NewKey("password", "your password")
 		cfg.Section("general").NewKey("skip edits", "true")
 		cfg.Section("general").NewKey("download tistory sites", "false")
 		cfg.Section("general").NewKey("max download retries", "3")
 		cfg.Section("channels").NewKey("channelid1", "C:\\full\\path\\1")
 		cfg.Section("channels").NewKey("channelid2", "C:\\full\\path\\2")
 		cfg.Section("channels").NewKey("channelid3", "C:\\full\\path\\3")
-		cfg.Section("flickr").NewKey("api key", "yourflickrapikey")
+		cfg.Section("flickr").NewKey("api key", "your flickr api key")
+		cfg.Section("twitter").NewKey("consumer key", "your consumer key")
+		cfg.Section("twitter").NewKey("consumer secret", "your consumer secret")
+		cfg.Section("twitter").NewKey("access token", "your access token")
+		cfg.Section("twitter").NewKey("access token secret", "your access token secret")
 		err = cfg.SaveTo("config.ini")
 
 		if err != nil {
@@ -136,8 +148,17 @@ func main() {
 	interactiveChannelLinkTemp = make(map[string]string)
 	historyCommandActive = make(map[string]string)
 	flickrApiKey = cfg.Section("flickr").Key("api key").MustString("yourflickrapikey")
+	twitterConsumerKey = cfg.Section("twitter").Key("consumer key").MustString("your consumer key")
+	twitterConsumerSecret = cfg.Section("twitter").Key("consumer secret").MustString("your consumer secret")
+	twitterAccessToken = cfg.Section("twitter").Key("access token").MustString("your access token")
+	twitterAccessTokenSecret = cfg.Section("twitter").Key("access token secret").MustString("your access token secret")
 
 	RegexpUrlTwitter, err = regexp.Compile(REGEXP_URL_TWITTER)
+	if err != nil {
+		fmt.Println("Regexp error", err)
+		return
+	}
+	RegexpUrlTwitterStatus, err = regexp.Compile(REGEXP_URL_TWITTER_STATUS)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
@@ -256,6 +277,14 @@ func getDownloadLinks(url string) map[string]string {
 			return links
 		}
 	}
+	if RegexpUrlTwitterStatus.MatchString(url) {
+		links, err := getTwitterStatusUrls(url)
+		if err != nil {
+			fmt.Println("twitter status url failed,", url, ",", err)
+		} else if len(links) > 0 {
+			return links
+		}
+	}
 	if RegexpUrlTistory.MatchString(url) {
 		links, err := getTistoryUrls(url)
 		if err != nil {
@@ -338,7 +367,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 		fileTime := time.Now()
 		var err error
 		if m.Timestamp != "" {
-			fileTime, err = time.Parse(time.RFC3339Nano, m.Timestamp)
+			fileTime, err = m.Timestamp.Parse()
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -469,10 +498,10 @@ func handleDiscordMessage(m *discordgo.Message) {
 						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("downloading to `%s`", folder))
 						historyCommandActive[m.ChannelID] = "downloading"
 						lastBefore := ""
-						lastBeforeTime := ""
+						var lastBeforeTime time.Time
 					MessageRequestingLoop:
 						for true {
-							if lastBeforeTime != "" {
+							if lastBeforeTime != (time.Time{}) {
 								fmt.Printf("[%s] Requesting 100 more messages, (before %s)\n", time.Now().Format(time.Stamp), lastBeforeTime)
 								dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Requesting 100 more messages, (before %s)\n", lastBeforeTime))
 							}
@@ -483,11 +512,14 @@ func handleDiscordMessage(m *discordgo.Message) {
 									break MessageRequestingLoop
 								}
 								lastBefore = messages[len(messages)-1].ID
-								lastBeforeTime = messages[len(messages)-1].Timestamp
+								lastBeforeTime, err = messages[len(messages)-1].Timestamp.Parse()
+								if err != nil {
+									fmt.Println(err)
+								}
 								for _, message := range messages {
 									fileTime := time.Now()
 									if m.Timestamp != "" {
-										fileTime, err = time.Parse(time.RFC3339Nano, message.Timestamp)
+										fileTime, err = message.Timestamp.Parse()
 										if err != nil {
 											fmt.Println(err)
 										}
@@ -532,7 +564,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 					fileTime := time.Now()
 					var err error
 					if m.Timestamp != "" {
-						fileTime, err = time.Parse(time.RFC3339Nano, m.Timestamp)
+						fileTime, err = m.Timestamp.Parse()
 						if err != nil {
 							fmt.Println(err)
 						}
@@ -631,6 +663,51 @@ func getTwitterUrls(url string) (map[string]string, error) {
 	} else {
 		return map[string]string{"https:" + parts[1] + ":orig": filenameFromUrl(parts[1])}, nil
 	}
+}
+
+func getTwitterStatusUrls(url string) (map[string]string, error) {
+	if (twitterConsumerKey == "" || twitterConsumerKey == "your consumer key") ||
+		(twitterConsumerSecret == "" || twitterConsumerSecret == "your consumer secret") ||
+		(twitterAccessToken == "" || twitterAccessToken == "your access token") ||
+		(twitterAccessTokenSecret == "" || twitterAccessTokenSecret == "your access token secret") {
+		return nil, errors.New("invalid twitter api keys set")
+	}
+	twitterConfig := oauth1.NewConfig(twitterConsumerKey, twitterConsumerSecret)
+	twitterToken := oauth1.NewToken(twitterAccessToken, twitterAccessTokenSecret)
+	twitterHttpClient := twitterConfig.Client(oauth1.NoContext, twitterToken)
+	twitterClient := twitter.NewClient(twitterHttpClient)
+
+	matches := RegexpUrlTwitterStatus.FindStringSubmatch(url)
+	statusId, err := strconv.ParseInt(matches[4], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	tweet, _, err := twitterClient.Statuses.Show(statusId, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	links := make(map[string]string)
+	for _, tweetMedia := range tweet.Entities.Media {
+		if len(tweetMedia.VideoInfo.Variants) > 0 {
+			// Not yet in the API (?)
+			fmt.Println("please post a link to this tweet here: https://github.com/Seklfreak/discord-image-downloader-go/issues")
+			for _, videoVariant := range tweetMedia.VideoInfo.Variants {
+				fmt.Printf("%+v\n", videoVariant)
+			}
+		} // else {
+		links[tweetMedia.MediaURLHttps] = ""
+		//}
+	}
+	for _, tweetUrl := range tweet.Entities.Urls {
+		foundUrls := getDownloadLinks(tweetUrl.ExpandedURL)
+		for foundUrlKey, foundUrlValue := range foundUrls {
+			links[foundUrlKey] = foundUrlValue
+		}
+	}
+
+	return links, nil
 }
 
 func getTistoryUrls(url string) (map[string]string, error) {
@@ -754,7 +831,7 @@ func getFlickrUrlFromPhotoId(photoId string) string {
 }
 
 func getFlickrPhotoUrls(url string) (map[string]string, error) {
-	if flickrApiKey == "" || flickrApiKey == "yourflickrapikey" {
+	if flickrApiKey == "" || flickrApiKey == "yourflickrapikey" || flickrApiKey == "your flickr api key" {
 		return nil, errors.New("invalid flickr api key set")
 	}
 	matches := RegexpUrlFlickrPhoto.FindStringSubmatch(url)
