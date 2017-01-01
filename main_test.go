@@ -107,7 +107,7 @@ func TestGetGfycatUrls(t *testing.T) {
 var getInstagramUrlsPictureTests = []urlsTestpair{
 	{
 		"https://www.instagram.com/p/BHhDAmhAz33/?taken-by=s_sohye",
-		map[string]string{"https://www.instagram.com/p/BHhDAmhAz33/media/?size=l&taken-bys_sohye": ""},
+		map[string]string{"https://www.instagram.com/p/BHhDAmhAz33/media/?size=l&taken-by=s_sohye": ""},
 	},
 	{
 		"https://www.instagram.com/p/BHhDAmhAz33/",
