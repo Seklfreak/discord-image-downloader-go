@@ -59,7 +59,7 @@ var (
 )
 
 const (
-	VERSION                          string = "1.15"
+	VERSION                          string = "1.15.1"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -757,8 +757,9 @@ func getInstagramUrls(url string) (map[string]string, error) {
 
 	// if instagram picture
 	afterLastSlash := strings.LastIndex(url, "/")
-	mediaUrl := url[:afterLastSlash] + strings.Replace(url[afterLastSlash:], "/", "/media/?size=l", -1)
-	mediaUrl = strings.Replace(mediaUrl, "?taken-by=", "&taken-by", -1)
+	mediaUrl := url[:afterLastSlash]
+	mediaUrl += strings.Replace(strings.Replace(url[afterLastSlash:], "?", "&", -1), "/", "/media/?size=l", -1)
+	fmt.Println(mediaUrl)
 	return map[string]string{mediaUrl: ""}, nil
 }
 
