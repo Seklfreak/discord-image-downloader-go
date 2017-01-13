@@ -56,6 +56,7 @@ var (
 	twitterConsumerSecret        string
 	twitterAccessToken           string
 	twitterAccessTokenSecret     string
+	DownloadTimeout              int
 )
 
 const (
@@ -108,7 +109,8 @@ func main() {
 		cfg.Section("auth").NewKey("password", "your password")
 		cfg.Section("general").NewKey("skip edits", "true")
 		cfg.Section("general").NewKey("download tistory sites", "false")
-		cfg.Section("general").NewKey("max download retries", "3")
+		cfg.Section("general").NewKey("max download retries", "5")
+		cfg.Section("general").NewKey("download timeout", "30")
 		cfg.Section("channels").NewKey("channelid1", "C:\\full\\path\\1")
 		cfg.Section("channels").NewKey("channelid2", "C:\\full\\path\\2")
 		cfg.Section("channels").NewKey("channelid3", "C:\\full\\path\\3")
@@ -236,6 +238,7 @@ func main() {
 
 	DownloadTistorySites = cfg.Section("general").Key("download tistory sites").MustBool()
 	MaxDownloadRetries = cfg.Section("general").Key("max download retries").MustInt(3)
+	DownloadTimeout = cfg.Section("general").Key("download timeout").MustInt(30)
 
 	err = dg.Open()
 	if err != nil {
@@ -1031,12 +1034,17 @@ func filenameFromUrl(dUrl string) string {
 }
 
 func startDownload(dUrl string, filename string, path string, channelId string, userId string, fileTime time.Time) {
+	success := false
 	for i := 0; i < MaxDownloadRetries; i++ {
-		if downloadFromUrl(dUrl, filename, path, channelId, userId, fileTime) {
+		success = downloadFromUrl(dUrl, filename, path, channelId, userId, fileTime)
+		if success == true {
 			break
 		} else {
 			time.Sleep(5 * time.Second)
 		}
+	}
+	if success == false {
+		fmt.Println("Gave up on downloading", dUrl)
 	}
 }
 
@@ -1047,7 +1055,11 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 		return false
 	}
 
-	client := new(http.Client)
+	timeout := time.Duration(time.Duration(DownloadTimeout) * time.Second)
+	fmt.Println(timeout)
+	client := &http.Client{
+		Timeout: timeout,
+	}
 	request, err := http.NewRequest("GET", dUrl, nil)
 	if err != nil {
 		fmt.Println("Error while downloading", dUrl, "-", err)
