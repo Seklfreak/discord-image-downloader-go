@@ -29,38 +29,39 @@ import (
 )
 
 var (
-	ChannelWhitelist             map[string]string
-	InteractiveChannelWhitelist  map[string]string
-	BaseDownloadPath             string
-	RegexpUrlTwitter             *regexp.Regexp
-	RegexpUrlTwitterStatus       *regexp.Regexp
-	RegexpUrlTistory             *regexp.Regexp
-	RegexpUrlTistoryWithCDN      *regexp.Regexp
-	RegexpUrlGfycat              *regexp.Regexp
-	RegexpUrlInstagram           *regexp.Regexp
-	RegexpUrlImgurSingle         *regexp.Regexp
-	RegexpUrlImgurAlbum          *regexp.Regexp
-	RegexpUrlGoogleDrive         *regexp.Regexp
-	RegexpUrlPossibleTistorySite *regexp.Regexp
-	RegexpUrlFlickrPhoto         *regexp.Regexp
-	RegexpUrlFlickrAlbum         *regexp.Regexp
-	dg                           *discordgo.Session
-	DownloadTistorySites         bool
-	interactiveChannelLinkTemp   map[string]string
-	DiscordUserId                string
-	myDB                         *db.DB
-	historyCommandActive         map[string]string
-	MaxDownloadRetries           int
-	flickrApiKey                 string
-	twitterConsumerKey           string
-	twitterConsumerSecret        string
-	twitterAccessToken           string
-	twitterAccessTokenSecret     string
-	DownloadTimeout              int
+	ChannelWhitelist                 map[string]string
+	InteractiveChannelWhitelist      map[string]string
+	BaseDownloadPath                 string
+	RegexpUrlTwitter                 *regexp.Regexp
+	RegexpUrlTwitterStatus           *regexp.Regexp
+	RegexpUrlTistory                 *regexp.Regexp
+	RegexpUrlTistoryWithCDN          *regexp.Regexp
+	RegexpUrlGfycat                  *regexp.Regexp
+	RegexpUrlInstagram               *regexp.Regexp
+	RegexpUrlImgurSingle             *regexp.Regexp
+	RegexpUrlImgurAlbum              *regexp.Regexp
+	RegexpUrlGoogleDrive             *regexp.Regexp
+	RegexpUrlPossibleTistorySite     *regexp.Regexp
+	RegexpUrlFlickrPhoto             *regexp.Regexp
+	RegexpUrlFlickrAlbum             *regexp.Regexp
+	dg                               *discordgo.Session
+	DownloadTistorySites             bool
+	interactiveChannelLinkTemp       map[string]string
+	DiscordUserId                    string
+	myDB                             *db.DB
+	historyCommandActive             map[string]string
+	MaxDownloadRetries               int
+	flickrApiKey                     string
+	twitterConsumerKey               string
+	twitterConsumerSecret            string
+	twitterAccessToken               string
+	twitterAccessTokenSecret         string
+	DownloadTimeout                  int
+	SendNoticesToInteractiveChannels bool
 )
 
 const (
-	VERSION                          string = "1.15.1"
+	VERSION                          string = "1.16"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -110,7 +111,8 @@ func main() {
 		cfg.Section("general").NewKey("skip edits", "true")
 		cfg.Section("general").NewKey("download tistory sites", "false")
 		cfg.Section("general").NewKey("max download retries", "5")
-		cfg.Section("general").NewKey("download timeout", "30")
+		cfg.Section("general").NewKey("download timeout", "60")
+		cfg.Section("general").NewKey("send notices to interactive channels", "false")
 		cfg.Section("channels").NewKey("channelid1", "C:\\full\\path\\1")
 		cfg.Section("channels").NewKey("channelid2", "C:\\full\\path\\2")
 		cfg.Section("channels").NewKey("channelid3", "C:\\full\\path\\3")
@@ -238,7 +240,8 @@ func main() {
 
 	DownloadTistorySites = cfg.Section("general").Key("download tistory sites").MustBool()
 	MaxDownloadRetries = cfg.Section("general").Key("max download retries").MustInt(3)
-	DownloadTimeout = cfg.Section("general").Key("download timeout").MustInt(30)
+	DownloadTimeout = cfg.Section("general").Key("download timeout").MustInt(60)
+	SendNoticesToInteractiveChannels = cfg.Section("general").Key("send notices to interactive channels").MustBool(false)
 
 	err = dg.Open()
 	if err != nil {
@@ -1045,6 +1048,15 @@ func startDownload(dUrl string, filename string, path string, channelId string, 
 	}
 	if success == false {
 		fmt.Println("Gave up on downloading", dUrl)
+		if SendNoticesToInteractiveChannels == true {
+			for channelId, _ := range InteractiveChannelWhitelist {
+				content := fmt.Sprintf("Gave up on downloading %s, no success after %d retries", dUrl, MaxDownloadRetries)
+				_, err := dg.ChannelMessageSend(channelId, content)
+				if err != nil {
+					fmt.Println("Failed to send notice to", channelId, "-", err)
+				}
+			}
+		}
 	}
 }
 
@@ -1056,7 +1068,6 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 	}
 
 	timeout := time.Duration(time.Duration(DownloadTimeout) * time.Second)
-	fmt.Println(timeout)
 	client := &http.Client{
 		Timeout: timeout,
 	}
