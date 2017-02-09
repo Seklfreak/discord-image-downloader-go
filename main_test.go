@@ -21,6 +21,7 @@ func init() {
 	RegexpUrlPossibleTistorySite, _ = regexp.Compile(REGEXP_URL_POSSIBLE_TISTORY_SITE)
 	RegexpUrlFlickrPhoto, _ = regexp.Compile(REGEXP_URL_FLICKR_PHOTO)
 	RegexpUrlFlickrAlbum, _ = regexp.Compile(REGEXP_URL_FLICKR_ALBUM)
+	RegexpUrlStreamable, _ = regexp.Compile(REGEXP_URL_STREAMABLE)
 	flickrApiKey = os.Getenv("FLICKR_API_KEY")
 
 	var err error
@@ -425,6 +426,32 @@ func TestGetFlickrAlbumUrls(t *testing.T) {
 		v, err := getFlickrAlbumUrls(pair.value)
 		if err != nil {
 			t.Errorf("For %v, expected %v, got %v", pair.value, nil, err)
+		}
+		if !reflect.DeepEqual(v, pair.result) {
+			t.Errorf("For %s, expected %s, got %s", pair.value, pair.result, v)
+		}
+	}
+}
+
+var getStreamableUrlsTests = []urlsTestpair{
+	{
+		"http://streamable.com/41ajc",
+		map[string]string{
+			"https://cdn-e1.streamable.com/video/mp4/41ajc.mp4": "",
+		},
+	},
+}
+
+func TestGetStreamableUrls(t *testing.T) {
+	for _, pair := range getStreamableUrlsTests {
+		v, err := getStreamableUrls(pair.value)
+		if err != nil {
+			t.Errorf("For %v, expected %v, got %v", pair.value, nil, err)
+		}
+		for key, value := range v {
+			parts := strings.Split(key, "?")
+			delete(v, key)
+			v[parts[0]] = value
 		}
 		if !reflect.DeepEqual(v, pair.result) {
 			t.Errorf("For %s, expected %s, got %s", pair.value, pair.result, v)
