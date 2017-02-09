@@ -44,6 +44,7 @@ var (
 	RegexpUrlPossibleTistorySite     *regexp.Regexp
 	RegexpUrlFlickrPhoto             *regexp.Regexp
 	RegexpUrlFlickrAlbum             *regexp.Regexp
+	RegexpUrlStreamable              *regexp.Regexp
 	dg                               *discordgo.Session
 	DownloadTistorySites             bool
 	interactiveChannelLinkTemp       map[string]string
@@ -61,7 +62,7 @@ var (
 )
 
 const (
-	VERSION                          string = "1.16"
+	VERSION                          string = "1.17"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -78,6 +79,7 @@ const (
 	REGEXP_URL_POSSIBLE_TISTORY_SITE string = `^http(s)?:\/\/[0-9a-zA-Z\.-]+\/(m\/)?(photo\/)?[0-9]+$`
 	REGEXP_URL_FLICKR_PHOTO          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/([0-9]+)(\/)?(\/in\/album-([0-9]+)(\/)?)?$`
 	REGEXP_URL_FLICKR_ALBUM          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/albums\/(with\/)?([0-9]+)(\/)?$`
+	REGEXP_URL_STREAMABLE            string = `^http(s?):\/\/(www\.)?streamable\.com\/([0-9a-z]+)$`
 )
 
 type GfycatObject struct {
@@ -217,6 +219,11 @@ func main() {
 		fmt.Println("Regexp error", err)
 		return
 	}
+	RegexpUrlStreamable, err = regexp.Compile(REGEXP_URL_STREAMABLE)
+	if err != nil {
+		fmt.Println("Regexp error", err)
+		return
+	}
 
 	if cfg.Section("auth").HasKey("token") {
 		dg, err = discordgo.New(cfg.Section("auth").Key("token").String())
@@ -351,6 +358,14 @@ func getDownloadLinks(url string) map[string]string {
 		links, err := getFlickrAlbumUrls(url)
 		if err != nil {
 			fmt.Println("flickr album url failed, ", url, ",", err)
+		} else if len(links) > 0 {
+			return links
+		}
+	}
+	if RegexpUrlStreamable.MatchString(url) {
+		links, err := getStreamableUrls(url)
+		if err != nil {
+			fmt.Println("streamable url failed, ", url, ",", err)
 		} else if len(links) > 0 {
 			return links
 		}
@@ -894,6 +909,47 @@ func getFlickrAlbumUrls(url string) (map[string]string, error) {
 		links[getFlickrUrlFromPhotoId(photo.ID)] = ""
 	}
 	fmt.Printf("[%s] Found flickr album with %d images (url: %s)\n", time.Now().Format(time.Stamp), len(links), url)
+	return links, nil
+}
+
+type StreamableObject struct {
+	Status int    `json:"status"`
+	Title  string `json:"title"`
+	Files  struct {
+		Mp4 struct {
+			URL    string `json:"url"`
+			Width  int    `json:"width"`
+			Height int    `json:"height"`
+		} `json:"mp4"`
+		Mp4Mobile struct {
+			URL    string `json:"url"`
+			Width  int    `json:"width"`
+			Height int    `json:"height"`
+		} `json:"mp4-mobile"`
+	} `json:"files"`
+	URL          string      `json:"url"`
+	ThumbnailURL string      `json:"thumbnail_url"`
+	Message      interface{} `json:"message"`
+}
+
+func getStreamableUrls(url string) (map[string]string, error) {
+	matches := RegexpUrlStreamable.FindStringSubmatch(url)
+	shortcode := matches[3]
+	if shortcode == "" {
+		return nil, errors.New("unable to get shortcode from url")
+	}
+	reqUrl := fmt.Sprintf("https://api.streamable.com/videos/%s", shortcode)
+	streamable := new(StreamableObject)
+	getJson(reqUrl, streamable)
+	if streamable.Status != 2 || streamable.Files.Mp4.URL == "" {
+		return nil, errors.New("streamable object has no download candidate")
+	}
+	link := streamable.Files.Mp4.URL
+	if !strings.HasPrefix(link, "http") {
+		link = "https:" + link
+	}
+	links := make(map[string]string)
+	links[link] = ""
 	return links, nil
 }
 
