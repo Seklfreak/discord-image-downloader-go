@@ -62,7 +62,7 @@ var (
 )
 
 const (
-	VERSION                          string = "1.17"
+	VERSION                          string = "1.18"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -710,16 +710,23 @@ func getTwitterStatusUrls(url string) (map[string]string, error) {
 	}
 
 	links := make(map[string]string)
-	for _, tweetMedia := range tweet.Entities.Media {
+	for _, tweetMedia := range tweet.ExtendedEntities.Media {
 		if len(tweetMedia.VideoInfo.Variants) > 0 {
-			// Not yet in the API (?)
-			fmt.Println("please post a link to this tweet here: https://github.com/Seklfreak/discord-image-downloader-go/issues")
+			var lastVideoVariant twitter.VideoVariant
 			for _, videoVariant := range tweetMedia.VideoInfo.Variants {
-				fmt.Printf("%+v\n", videoVariant)
+				if videoVariant.Bitrate >= lastVideoVariant.Bitrate {
+					lastVideoVariant = videoVariant
+				}
 			}
-		} // else {
-		links[tweetMedia.MediaURLHttps] = ""
-		//}
+			if lastVideoVariant.URL != "" {
+				links[lastVideoVariant.URL] = ""
+			}
+		} else {
+			foundUrls := getDownloadLinks(tweetMedia.MediaURLHttps)
+			for foundUrlKey, foundUrlValue := range foundUrls {
+				links[foundUrlKey] = foundUrlValue
+			}
+		}
 	}
 	for _, tweetUrl := range tweet.Entities.Urls {
 		foundUrls := getDownloadLinks(tweetUrl.ExpandedURL)
