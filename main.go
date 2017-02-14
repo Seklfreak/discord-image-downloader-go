@@ -62,7 +62,7 @@ var (
 )
 
 const (
-	VERSION                          string = "1.18"
+	VERSION                          string = "1.18.1"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -710,28 +710,32 @@ func getTwitterStatusUrls(url string) (map[string]string, error) {
 	}
 
 	links := make(map[string]string)
-	for _, tweetMedia := range tweet.ExtendedEntities.Media {
-		if len(tweetMedia.VideoInfo.Variants) > 0 {
-			var lastVideoVariant twitter.VideoVariant
-			for _, videoVariant := range tweetMedia.VideoInfo.Variants {
-				if videoVariant.Bitrate >= lastVideoVariant.Bitrate {
-					lastVideoVariant = videoVariant
+	if tweet.ExtendedEntities != nil {
+		for _, tweetMedia := range tweet.ExtendedEntities.Media {
+			if len(tweetMedia.VideoInfo.Variants) > 0 {
+				var lastVideoVariant twitter.VideoVariant
+				for _, videoVariant := range tweetMedia.VideoInfo.Variants {
+					if videoVariant.Bitrate >= lastVideoVariant.Bitrate {
+						lastVideoVariant = videoVariant
+					}
 				}
-			}
-			if lastVideoVariant.URL != "" {
-				links[lastVideoVariant.URL] = ""
-			}
-		} else {
-			foundUrls := getDownloadLinks(tweetMedia.MediaURLHttps)
-			for foundUrlKey, foundUrlValue := range foundUrls {
-				links[foundUrlKey] = foundUrlValue
+				if lastVideoVariant.URL != "" {
+					links[lastVideoVariant.URL] = ""
+				}
+			} else {
+				foundUrls := getDownloadLinks(tweetMedia.MediaURLHttps)
+				for foundUrlKey, foundUrlValue := range foundUrls {
+					links[foundUrlKey] = foundUrlValue
+				}
 			}
 		}
 	}
-	for _, tweetUrl := range tweet.Entities.Urls {
-		foundUrls := getDownloadLinks(tweetUrl.ExpandedURL)
-		for foundUrlKey, foundUrlValue := range foundUrls {
-			links[foundUrlKey] = foundUrlValue
+	if tweet.Entities != nil {
+		for _, tweetUrl := range tweet.Entities.Urls {
+			foundUrls := getDownloadLinks(tweetUrl.ExpandedURL)
+			for foundUrlKey, foundUrlValue := range foundUrls {
+				links[foundUrlKey] = foundUrlValue
+			}
 		}
 	}
 
