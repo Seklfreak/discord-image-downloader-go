@@ -31,3 +31,5 @@ crossbuild.bat
 
 testfolder/*
 database*/
+
+.idea/
