@@ -1115,11 +1115,12 @@ func getInstagramAlbumUrls(url string) []string {
     defer resp.Body.Close()
     z := html.NewTokenizer(resp.Body)
 
+ParseLoop:
     for {
         tt := z.Next()
         switch {
         case tt == html.ErrorToken:
-            return links
+            break ParseLoop
         }
         if tt == html.StartTagToken || tt == html.SelfClosingTagToken {
             t := z.Token()
@@ -1134,17 +1135,17 @@ func getInstagramAlbumUrls(url string) []string {
                             jsonParsed, err := gabs.ParseJSON([]byte(content))
                             if err != nil {
                                 fmt.Println("error parsing instagram json: ", err)
-                                continue
+                                continue ParseLoop
                             }
                             entryChildren, err := jsonParsed.Path("entry_data.PostPage").Children()
                             if err != nil {
                                 fmt.Println("unable to find entries children: ", err)
-                                continue
+                                continue ParseLoop
                             }
                             for _, entryChild := range entryChildren {
                                 albumChildren, err := entryChild.Path("media.edge_sidecar_to_children.edges").Children()
                                 if err != nil {
-                                    continue
+                                    continue ParseLoop
                                 }
                                 for _, albumChild := range albumChildren {
                                     link, ok := albumChild.Path("node.display_url").Data().(string)
