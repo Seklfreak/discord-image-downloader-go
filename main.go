@@ -45,6 +45,7 @@ var (
     RegexpUrlPossibleTistorySite     *regexp.Regexp
     RegexpUrlFlickrPhoto             *regexp.Regexp
     RegexpUrlFlickrAlbum             *regexp.Regexp
+    RegexpUrlFlickrAlbumShort        *regexp.Regexp
     RegexpUrlStreamable              *regexp.Regexp
     dg                               *discordgo.Session
     DownloadTistorySites             bool
@@ -63,7 +64,7 @@ var (
 )
 
 const (
-    VERSION                          string = "1.19"
+    VERSION                          string = "1.20"
     DATABASE_DIR                     string = "database"
     RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
     RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -79,7 +80,8 @@ const (
     REGEXP_URL_GOOGLEDRIVE           string = `^http(s?):\/\/drive\.google\.com\/file\/d\/[^/]+\/view$`
     REGEXP_URL_POSSIBLE_TISTORY_SITE string = `^http(s)?:\/\/[0-9a-zA-Z\.-]+\/(m\/)?(photo\/)?[0-9]+$`
     REGEXP_URL_FLICKR_PHOTO          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/([0-9]+)(\/)?(\/in\/album-([0-9]+)(\/)?)?$`
-    REGEXP_URL_FLICKR_ALBUM          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/albums\/(with\/)?([0-9]+)(\/)?$`
+    REGEXP_URL_FLICKR_ALBUM          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/(albums\/(with\/)?|(sets\/)?)([0-9]+)(\/)?$`
+    REGEXP_URL_FLICKR_ALBUM_SHORT    string = `^http(s)?:\/\/(www\.)?flickr\.com\/gp\/[0-9]+@[A-Z0-9]+\/[A-Za-z0-9]+$`
     REGEXP_URL_STREAMABLE            string = `^http(s?):\/\/(www\.)?streamable\.com\/([0-9a-z]+)$`
 )
 
@@ -225,6 +227,11 @@ func main() {
         fmt.Println("Regexp error", err)
         return
     }
+    RegexpUrlFlickrAlbumShort, err = regexp.Compile(REGEXP_URL_FLICKR_ALBUM_SHORT)
+    if err != nil {
+        fmt.Println("Regexp error", err)
+        return
+    }
 
     if cfg.Section("auth").HasKey("token") {
         dg, err = discordgo.New(cfg.Section("auth").Key("token").String())
@@ -359,6 +366,14 @@ func getDownloadLinks(url string) map[string]string {
         links, err := getFlickrAlbumUrls(url)
         if err != nil {
             fmt.Println("flickr album url failed, ", url, ",", err)
+        } else if len(links) > 0 {
+            return links
+        }
+    }
+    if RegexpUrlFlickrAlbumShort.MatchString(url) {
+        links, err := getFlickrAlbumShortUrls(url)
+        if err != nil {
+            fmt.Println("flickr album short url failed, ", url, ",", err)
         } else if len(links) > 0 {
             return links
         }
@@ -915,7 +930,7 @@ func getFlickrAlbumUrls(url string) (map[string]string, error) {
         return nil, errors.New("invalid flickr api key set")
     }
     matches := RegexpUrlFlickrAlbum.FindStringSubmatch(url)
-    albumId := matches[6]
+    albumId := matches[8]
     if albumId == "" {
         return nil, errors.New("unable to get album id from url")
     }
@@ -929,6 +944,18 @@ func getFlickrAlbumUrls(url string) (map[string]string, error) {
     }
     fmt.Printf("[%s] Found flickr album with %d images (url: %s)\n", time.Now().Format(time.Stamp), len(links), url)
     return links, nil
+}
+
+func getFlickrAlbumShortUrls(url string) (map[string]string, error) {
+    result, err := http.Get(url)
+    if err != nil {
+        return nil, errors.New("error getting long url from shortened flickr album url: " + err.Error())
+    }
+    if RegexpUrlFlickrAlbum.MatchString(result.Request.URL.String()) {
+        return getFlickrAlbumUrls(result.Request.URL.String())
+    } else {
+        return nil, errors.New("got invalid url while trying to get long url from short flickr album url")
+    }
 }
 
 type StreamableObject struct {
