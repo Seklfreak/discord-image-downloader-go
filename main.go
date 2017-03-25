@@ -81,7 +81,7 @@ const (
     REGEXP_URL_POSSIBLE_TISTORY_SITE string = `^http(s)?:\/\/[0-9a-zA-Z\.-]+\/(m\/)?(photo\/)?[0-9]+$`
     REGEXP_URL_FLICKR_PHOTO          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/([0-9]+)(\/)?(\/in\/album-([0-9]+)(\/)?)?$`
     REGEXP_URL_FLICKR_ALBUM          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/(albums\/(with\/)?|(sets\/)?)([0-9]+)(\/)?$`
-    REGEXP_URL_FLICKR_ALBUM_SHORT    string = `^http(s)?:\/\/(www\.)?flickr\.com\/gp\/[0-9]+@[A-Z0-9]+\/[A-Za-z0-9]+$`
+    REGEXP_URL_FLICKR_ALBUM_SHORT    string = `^http(s)?:\/\/((www\.)?flickr\.com\/gp\/[0-9]+@[A-Z0-9]+\/[A-Za-z0-9]+|flic\.kr\/s\/[a-zA-Z0-9]+)$`
     REGEXP_URL_STREAMABLE            string = `^http(s?):\/\/(www\.)?streamable\.com\/([0-9a-z]+)$`
 )
 
