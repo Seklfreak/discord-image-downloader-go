@@ -71,7 +71,7 @@ var (
 )
 
 const (
-    VERSION                          string = "1.22"
+    VERSION                          string = "1.22.1"
     DATABASE_DIR                     string = "database"
     RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
     RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -848,19 +848,20 @@ func getInstagramUrls(url string) (map[string]string, error) {
     if videoUrl != "" {
         return map[string]string{videoUrl: ""}, nil
     }
-    // if instagram picture
-    afterLastSlash := strings.LastIndex(url, "/")
-    mediaUrl := url[:afterLastSlash]
-    mediaUrl += strings.Replace(strings.Replace(url[afterLastSlash:], "?", "&", -1), "/", "/media/?size=l", -1)
     // if instagram album
     albumUrls := getInstagramAlbumUrls(url)
     if len(albumUrls) > 0 {
+        fmt.Println("is instagram album")
         links := make(map[string]string)
         for _, albumUrl := range albumUrls {
             links[albumUrl] = ""
         }
         return links, nil
     }
+    // if instagram picture
+    afterLastSlash := strings.LastIndex(url, "/")
+    mediaUrl := url[:afterLastSlash]
+    mediaUrl += strings.Replace(strings.Replace(url[afterLastSlash:], "?", "&", -1), "/", "/media/?size=l", -1)
     return map[string]string{mediaUrl: ""}, nil
 }
 
@@ -1260,7 +1261,7 @@ ParseLoop:
                                 continue ParseLoop
                             }
                             for _, entryChild := range entryChildren {
-                                albumChildren, err := entryChild.Path("media.edge_sidecar_to_children.edges").Children()
+                                albumChildren, err := entryChild.Path("graphql.shortcode_media.edge_sidecar_to_children.edges").Children()
                                 if err != nil {
                                     continue ParseLoop
                                 }
