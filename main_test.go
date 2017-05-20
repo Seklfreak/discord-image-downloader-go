@@ -466,7 +466,7 @@ var getStreamableUrlsTests = []urlsTestpair{
     {
         "http://streamable.com/41ajc",
         map[string]string{
-            "https://cdn-e1.streamable.com/video/mp4/41ajc.mp4": "",
+            "https://cdn-e2.streamable.com/video/mp4/41ajc.mp4": "",
         },
     },
 }

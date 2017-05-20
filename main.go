@@ -27,6 +27,10 @@ import (
     "golang.org/x/net/html"
     "gopkg.in/ini.v1"
     "github.com/Jeffail/gabs"
+    "google.golang.org/api/drive/v3"
+    "golang.org/x/oauth2/google"
+    "golang.org/x/net/context"
+    "google.golang.org/api/googleapi"
 )
 
 var (
@@ -42,6 +46,7 @@ var (
     RegexpUrlImgurSingle             *regexp.Regexp
     RegexpUrlImgurAlbum              *regexp.Regexp
     RegexpUrlGoogleDrive             *regexp.Regexp
+    RegexpUrlGoogleDriveFolder       *regexp.Regexp
     RegexpUrlPossibleTistorySite     *regexp.Regexp
     RegexpUrlFlickrPhoto             *regexp.Regexp
     RegexpUrlFlickrAlbum             *regexp.Regexp
@@ -61,10 +66,12 @@ var (
     twitterAccessTokenSecret         string
     DownloadTimeout                  int
     SendNoticesToInteractiveChannels bool
+    clientCredentialsJson            string
+    DriveService                     *drive.Service
 )
 
 const (
-    VERSION                          string = "1.20.1"
+    VERSION                          string = "1.21"
     DATABASE_DIR                     string = "database"
     RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
     RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -78,6 +85,7 @@ const (
     REGEXP_URL_IMGUR_SINGLE          string = `^http(s?):\/\/(i\.)?imgur\.com\/[A-Za-z0-9]+(\.gifv)?$`
     REGEXP_URL_IMGUR_ALBUM           string = `^http(s?):\/\/imgur\.com\/a\/[A-Za-z0-9]+$`
     REGEXP_URL_GOOGLEDRIVE           string = `^http(s?):\/\/drive\.google\.com\/file\/d\/[^/]+\/view$`
+    REGEXP_URL_GOOGLEDRIVE_FOLDER    string = `^http(s?):\/\/drive\.google\.com\/(drive\/folders\/|open\?id=)([^/]+)$`
     REGEXP_URL_POSSIBLE_TISTORY_SITE string = `^http(s)?:\/\/[0-9a-zA-Z\.-]+\/(m\/)?(photo\/)?[0-9]+$`
     REGEXP_URL_FLICKR_PHOTO          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/([0-9]+)(\/)?(\/in\/album-([0-9]+)(\/)?)?$`
     REGEXP_URL_FLICKR_ALBUM          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/(albums\/(with\/)?|(sets\/)?)([0-9]+)(\/)?$`
@@ -207,6 +215,11 @@ func main() {
         fmt.Println("Regexp error", err)
         return
     }
+    RegexpUrlGoogleDriveFolder, err = regexp.Compile(REGEXP_URL_GOOGLEDRIVE_FOLDER)
+    if err != nil {
+        fmt.Println("Regexp error", err)
+        return
+    }
     RegexpUrlPossibleTistorySite, err = regexp.Compile(REGEXP_URL_POSSIBLE_TISTORY_SITE)
     if err != nil {
         fmt.Println("Regexp error", err)
@@ -258,6 +271,27 @@ func main() {
     DownloadTimeout = cfg.Section("general").Key("download timeout").MustInt(60)
     SendNoticesToInteractiveChannels = cfg.Section("general").Key("send notices to interactive channels").MustBool(false)
 
+    // setup google drive client
+    clientCredentialsJson = cfg.Section("google").Key("client credentials json").MustString("")
+    if clientCredentialsJson != "" {
+        ctx := context.Background()
+        authJson, err := ioutil.ReadFile(clientCredentialsJson)
+        if err != nil {
+            fmt.Println("error opening google credentials json,", err)
+        } else {
+            config, err := google.JWTConfigFromJSON(authJson, drive.DriveReadonlyScope)
+            if err != nil {
+                fmt.Println("error parsing google credentials json,", err)
+            } else {
+                client := config.Client(ctx)
+                DriveService, err = drive.New(client)
+                if err != nil {
+                    fmt.Println("error setting up google drive client,", err)
+                }
+            }
+        }
+    }
+
     err = dg.Open()
     if err != nil {
         fmt.Println("error opening connection,", err)
@@ -289,7 +323,7 @@ func messageUpdate(s *discordgo.Session, m *discordgo.MessageUpdate) {
     handleDiscordMessage(m.Message)
 }
 
-func getDownloadLinks(url string) map[string]string {
+func getDownloadLinks(url string, interactive bool) map[string]string {
     if RegexpUrlTwitter.MatchString(url) {
         links, err := getTwitterUrls(url)
         if err != nil {
@@ -396,6 +430,18 @@ func getDownloadLinks(url string) map[string]string {
             }
         }
     }
+    if RegexpUrlGoogleDriveFolder.MatchString(url) {
+        if interactive {
+            links, err := getGoogleDriveFolderUrls(url)
+            if err != nil {
+                fmt.Println("google drive folder url failed, ", url, ",", err)
+            } else if len(links) > 0 {
+                return links
+            }
+        } else {
+            fmt.Println("google drive folder only accepted in interactive channels")
+        }
+    }
     return map[string]string{url: ""}
 }
 
@@ -414,7 +460,7 @@ func handleDiscordMessage(m *discordgo.Message) {
         }
         foundUrls := xurls.Strict.FindAllString(m.Content, -1)
         for _, iFoundUrl := range foundUrls {
-            links := getDownloadLinks(iFoundUrl)
+            links := getDownloadLinks(iFoundUrl, false)
             for link, filename := range links {
                 startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
             }
@@ -573,7 +619,7 @@ func handleDiscordMessage(m *discordgo.Message) {
                                     }
                                     foundUrls := xurls.Strict.FindAllString(message.Content, -1)
                                     for _, iFoundUrl := range foundUrls {
-                                        links := getDownloadLinks(iFoundUrl)
+                                        links := getDownloadLinks(iFoundUrl, false)
                                         for link, filename := range links {
                                             if findDownloadedImageByUrl(link) == nil {
                                                 i++
@@ -610,7 +656,7 @@ func handleDiscordMessage(m *discordgo.Message) {
                         dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> started", link))
                         dg.ChannelTyping(m.ChannelID)
                         delete(interactiveChannelLinkTemp, m.ChannelID)
-                        links := getDownloadLinks(link)
+                        links := getDownloadLinks(link, true)
                         for linkR, filename := range links {
                             startDownload(linkR, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
                         }
@@ -622,7 +668,7 @@ func handleDiscordMessage(m *discordgo.Message) {
                         dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> started", link))
                         dg.ChannelTyping(m.ChannelID)
                         delete(interactiveChannelLinkTemp, m.ChannelID)
-                        links := getDownloadLinks(link)
+                        links := getDownloadLinks(link, true)
                         for linkR, filename := range links {
                             startDownload(linkR, filename, m.Content, m.ChannelID, m.Author.ID, fileTime)
                         }
@@ -739,7 +785,7 @@ func getTwitterStatusUrls(url string) (map[string]string, error) {
                     links[lastVideoVariant.URL] = ""
                 }
             } else {
-                foundUrls := getDownloadLinks(tweetMedia.MediaURLHttps)
+                foundUrls := getDownloadLinks(tweetMedia.MediaURLHttps, false)
                 for foundUrlKey, foundUrlValue := range foundUrls {
                     links[foundUrlKey] = foundUrlValue
                 }
@@ -748,7 +794,7 @@ func getTwitterStatusUrls(url string) (map[string]string, error) {
     }
     if tweet.Entities != nil {
         for _, tweetUrl := range tweet.Entities.Urls {
-            foundUrls := getDownloadLinks(tweetUrl.ExpandedURL)
+            foundUrls := getDownloadLinks(tweetUrl.ExpandedURL, false)
             for foundUrlKey, foundUrlValue := range foundUrls {
                 links[foundUrlKey] = foundUrlValue
             }
@@ -847,6 +893,47 @@ func getGoogleDriveUrls(url string) (map[string]string, error) {
         fileId := parts[len(parts)-2]
         return map[string]string{"https://drive.google.com/uc?export=download&id=" + fileId: ""}, nil
     }
+}
+
+func getGoogleDriveFolderUrls(url string) (map[string]string, error) {
+    matches := RegexpUrlGoogleDriveFolder.FindStringSubmatch(url)
+    if len(matches) < 4 || matches[3] == "" {
+        return nil, errors.New("unable to find google drive folder ID in link")
+    }
+    if DriveService.BasePath == "" {
+        return nil, errors.New("please set up google credentials")
+    }
+    googleDriveFolderID := matches[3]
+
+    links := make(map[string]string)
+
+    driveQuery := fmt.Sprintf("\"%s\" in parents", googleDriveFolderID)
+    driveFields := "nextPageToken, files(id)"
+    result, err := DriveService.Files.List().Q(driveQuery).Fields(googleapi.Field(driveFields)).PageSize(1000).Do()
+    if err != nil {
+        fmt.Println("driveQuery:", driveQuery)
+        fmt.Println("driveFields:", driveFields)
+        fmt.Println("err:", err)
+        return nil, err
+    }
+    for _, file := range result.Files {
+        fileUrl := "https://drive.google.com/uc?export=download&id=" + file.Id
+        links[fileUrl] = ""
+    }
+
+    for {
+        if result.NextPageToken == "" {
+            break
+        }
+        result, err = DriveService.Files.List().Q(driveQuery).Fields(googleapi.Field(driveFields)).PageSize(1000).PageToken(result.NextPageToken).Do()
+        if err != nil {
+            return nil, err
+        }
+        for _, file := range result.Files {
+            links[file.Id] = ""
+        }
+    }
+    return links, nil
 }
 
 type FlickrPhotoSizeObject struct {
