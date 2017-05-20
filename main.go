@@ -71,7 +71,7 @@ var (
 )
 
 const (
-    VERSION                          string = "1.21"
+    VERSION                          string = "1.22"
     DATABASE_DIR                     string = "database"
     RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
     RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -88,7 +88,7 @@ const (
     REGEXP_URL_GOOGLEDRIVE_FOLDER    string = `^http(s?):\/\/drive\.google\.com\/(drive\/folders\/|open\?id=)([^/]+)$`
     REGEXP_URL_POSSIBLE_TISTORY_SITE string = `^http(s)?:\/\/[0-9a-zA-Z\.-]+\/(m\/)?(photo\/)?[0-9]+$`
     REGEXP_URL_FLICKR_PHOTO          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/([0-9]+)(\/)?(\/in\/album-([0-9]+)(\/)?)?$`
-    REGEXP_URL_FLICKR_ALBUM          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/(albums\/(with\/)?|(sets\/)?)([0-9]+)(\/)?$`
+    REGEXP_URL_FLICKR_ALBUM          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/(([0-9]+)@([A-Z0-9]+)|[A-Za-z0-9]+)\/(albums\/(with\/)?|(sets\/)?)([0-9]+)(\/)?$`
     REGEXP_URL_FLICKR_ALBUM_SHORT    string = `^http(s)?:\/\/((www\.)?flickr\.com\/gp\/[0-9]+@[A-Z0-9]+\/[A-Za-z0-9]+|flic\.kr\/s\/[a-zA-Z0-9]+)$`
     REGEXP_URL_STREAMABLE            string = `^http(s?):\/\/(www\.)?streamable\.com\/([0-9a-z]+)$`
 )
@@ -1017,7 +1017,10 @@ func getFlickrAlbumUrls(url string) (map[string]string, error) {
         return nil, errors.New("invalid flickr api key set")
     }
     matches := RegexpUrlFlickrAlbum.FindStringSubmatch(url)
-    albumId := matches[8]
+    if len(matches) < 10 || matches[9] == "" {
+        return nil, errors.New("unable to find flickr album ID in link")
+    }
+    albumId := matches[9]
     if albumId == "" {
         return nil, errors.New("unable to get album id from url")
     }

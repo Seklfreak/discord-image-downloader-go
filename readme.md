@@ -10,7 +10,7 @@ This is a simple tool which downloads pictures (and instagram videos) posted in 
 - Gfycat
 - Instagram
 - Imgur
-- Google Drive
+- Google Drive Files and Folders
 - Flickr
 - Streamable
 - Any direct link to an image or video
