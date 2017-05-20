@@ -71,7 +71,7 @@ var (
 )
 
 const (
-    VERSION                          string = "1.22.1"
+    VERSION                          string = "1.22.2"
     DATABASE_DIR                     string = "database"
     RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
     RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -588,7 +588,7 @@ func handleDiscordMessage(m *discordgo.Message) {
                                 fmt.Printf("[%s] Requesting 100 more messages, (before %s)\n", time.Now().Format(time.Stamp), lastBeforeTime)
                                 dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Requesting 100 more messages, (before %s)\n", lastBeforeTime))
                             }
-                            messages, err := dg.ChannelMessages(m.Content, 100, lastBefore, "")
+                            messages, err := dg.ChannelMessages(m.Content, 100, lastBefore, "", "")
                             if err == nil {
                                 if len(messages) <= 0 {
                                     delete(historyCommandActive, m.ChannelID)
