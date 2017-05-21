@@ -71,7 +71,7 @@ var (
 )
 
 const (
-    VERSION                          string = "1.22.2"
+    VERSION                          string = "1.23"
     DATABASE_DIR                     string = "database"
     RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
     RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -323,21 +323,21 @@ func messageUpdate(s *discordgo.Session, m *discordgo.MessageUpdate) {
     handleDiscordMessage(m.Message)
 }
 
-func getDownloadLinks(url string, interactive bool) map[string]string {
+func getDownloadLinks(url string, channelID string, interactive bool) map[string]string {
     if RegexpUrlTwitter.MatchString(url) {
         links, err := getTwitterUrls(url)
         if err != nil {
             fmt.Println("twitter url failed,", url, ",", err)
         } else if len(links) > 0 {
-            return links
+            return skipDuplicateLinks(links, channelID, interactive)
         }
     }
     if RegexpUrlTwitterStatus.MatchString(url) {
-        links, err := getTwitterStatusUrls(url)
+        links, err := getTwitterStatusUrls(url, channelID)
         if err != nil {
             fmt.Println("twitter status url failed,", url, ",", err)
         } else if len(links) > 0 {
-            return links
+            return skipDuplicateLinks(links, channelID, interactive)
         }
     }
     if RegexpUrlTistory.MatchString(url) {
@@ -345,7 +345,7 @@ func getDownloadLinks(url string, interactive bool) map[string]string {
         if err != nil {
             fmt.Println("tistory url failed,", url, ",", err)
         } else if len(links) > 0 {
-            return links
+            return skipDuplicateLinks(links, channelID, interactive)
         }
     }
     if RegexpUrlGfycat.MatchString(url) {
@@ -353,7 +353,7 @@ func getDownloadLinks(url string, interactive bool) map[string]string {
         if err != nil {
             fmt.Println("gfycat url failed,", url, ",", err)
         } else if len(links) > 0 {
-            return links
+            return skipDuplicateLinks(links, channelID, interactive)
         }
     }
     if RegexpUrlInstagram.MatchString(url) {
@@ -361,7 +361,7 @@ func getDownloadLinks(url string, interactive bool) map[string]string {
         if err != nil {
             fmt.Println("instagram url failed,", url, ",", err)
         } else if len(links) > 0 {
-            return links
+            return skipDuplicateLinks(links, channelID, interactive)
         }
     }
     if RegexpUrlImgurSingle.MatchString(url) {
@@ -369,7 +369,7 @@ func getDownloadLinks(url string, interactive bool) map[string]string {
         if err != nil {
             fmt.Println("imgur single url failed, ", url, ",", err)
         } else if len(links) > 0 {
-            return links
+            return skipDuplicateLinks(links, channelID, interactive)
         }
     }
     if RegexpUrlImgurAlbum.MatchString(url) {
@@ -377,7 +377,7 @@ func getDownloadLinks(url string, interactive bool) map[string]string {
         if err != nil {
             fmt.Println("imgur album url failed, ", url, ",", err)
         } else if len(links) > 0 {
-            return links
+            return skipDuplicateLinks(links, channelID, interactive)
         }
     }
     if RegexpUrlGoogleDrive.MatchString(url) {
@@ -385,7 +385,7 @@ func getDownloadLinks(url string, interactive bool) map[string]string {
         if err != nil {
             fmt.Println("google drive album url failed, ", url, ",", err)
         } else if len(links) > 0 {
-            return links
+            return skipDuplicateLinks(links, channelID, interactive)
         }
     }
     if RegexpUrlFlickrPhoto.MatchString(url) {
@@ -393,7 +393,7 @@ func getDownloadLinks(url string, interactive bool) map[string]string {
         if err != nil {
             fmt.Println("flickr photo url failed, ", url, ",", err)
         } else if len(links) > 0 {
-            return links
+            return skipDuplicateLinks(links, channelID, interactive)
         }
     }
     if RegexpUrlFlickrAlbum.MatchString(url) {
@@ -401,7 +401,7 @@ func getDownloadLinks(url string, interactive bool) map[string]string {
         if err != nil {
             fmt.Println("flickr album url failed, ", url, ",", err)
         } else if len(links) > 0 {
-            return links
+            return skipDuplicateLinks(links, channelID, interactive)
         }
     }
     if RegexpUrlFlickrAlbumShort.MatchString(url) {
@@ -409,7 +409,7 @@ func getDownloadLinks(url string, interactive bool) map[string]string {
         if err != nil {
             fmt.Println("flickr album short url failed, ", url, ",", err)
         } else if len(links) > 0 {
-            return links
+            return skipDuplicateLinks(links, channelID, interactive)
         }
     }
     if RegexpUrlStreamable.MatchString(url) {
@@ -417,7 +417,7 @@ func getDownloadLinks(url string, interactive bool) map[string]string {
         if err != nil {
             fmt.Println("streamable url failed, ", url, ",", err)
         } else if len(links) > 0 {
-            return links
+            return skipDuplicateLinks(links, channelID, interactive)
         }
     }
     if DownloadTistorySites {
@@ -426,7 +426,7 @@ func getDownloadLinks(url string, interactive bool) map[string]string {
             if err != nil {
                 fmt.Println("checking for tistory site failed, ", url, ",", err)
             } else if len(links) > 0 {
-                return links
+                return skipDuplicateLinks(links, channelID, interactive)
             }
         }
     }
@@ -436,13 +436,36 @@ func getDownloadLinks(url string, interactive bool) map[string]string {
             if err != nil {
                 fmt.Println("google drive folder url failed, ", url, ",", err)
             } else if len(links) > 0 {
-                return links
+                return skipDuplicateLinks(links, channelID, interactive)
             }
         } else {
             fmt.Println("google drive folder only accepted in interactive channels")
         }
     }
     return map[string]string{url: ""}
+}
+
+func skipDuplicateLinks(linkList map[string]string, channelID string, interactive bool) map[string]string {
+    if interactive == false {
+        newList := make(map[string]string, 0)
+        for link, filename := range linkList {
+            downloadedImages := findDownloadedImageByUrl(link)
+            isMatched := false
+            for _, downloadedImage := range downloadedImages {
+                if downloadedImage.ChannelId == channelID {
+                    isMatched = true
+                }
+            }
+            if isMatched == false {
+                newList[link] = filename
+            } else {
+                fmt.Println("url already downloaded in this channel:", link)
+            }
+        }
+        return newList
+    } else {
+        return linkList
+    }
 }
 
 func handleDiscordMessage(m *discordgo.Message) {
@@ -460,7 +483,7 @@ func handleDiscordMessage(m *discordgo.Message) {
         }
         foundUrls := xurls.Strict.FindAllString(m.Content, -1)
         for _, iFoundUrl := range foundUrls {
-            links := getDownloadLinks(iFoundUrl, false)
+            links := getDownloadLinks(iFoundUrl, m.ChannelID, false)
             for link, filename := range links {
                 startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
             }
@@ -612,16 +635,16 @@ func handleDiscordMessage(m *discordgo.Message) {
                                         break MessageRequestingLoop
                                     }
                                     for _, iAttachment := range message.Attachments {
-                                        if findDownloadedImageByUrl(iAttachment.URL) == nil {
+                                        if len(findDownloadedImageByUrl(iAttachment.URL)) == 0 {
                                             i++
                                             startDownload(iAttachment.URL, iAttachment.Filename, folder, message.ChannelID, message.Author.ID, fileTime)
                                         }
                                     }
                                     foundUrls := xurls.Strict.FindAllString(message.Content, -1)
                                     for _, iFoundUrl := range foundUrls {
-                                        links := getDownloadLinks(iFoundUrl, false)
+                                        links := getDownloadLinks(iFoundUrl, message.ChannelID, false)
                                         for link, filename := range links {
-                                            if findDownloadedImageByUrl(link) == nil {
+                                            if len(findDownloadedImageByUrl(link)) == 0 {
                                                 i++
                                                 startDownload(link, filename, folder, message.ChannelID, message.Author.ID, fileTime)
                                             }
@@ -656,7 +679,7 @@ func handleDiscordMessage(m *discordgo.Message) {
                         dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> started", link))
                         dg.ChannelTyping(m.ChannelID)
                         delete(interactiveChannelLinkTemp, m.ChannelID)
-                        links := getDownloadLinks(link, true)
+                        links := getDownloadLinks(link, m.ChannelID, true)
                         for linkR, filename := range links {
                             startDownload(linkR, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
                         }
@@ -668,7 +691,7 @@ func handleDiscordMessage(m *discordgo.Message) {
                         dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> started", link))
                         dg.ChannelTyping(m.ChannelID)
                         delete(interactiveChannelLinkTemp, m.ChannelID)
-                        links := getDownloadLinks(link, true)
+                        links := getDownloadLinks(link, m.ChannelID, true)
                         for linkR, filename := range links {
                             startDownload(linkR, filename, m.Content, m.ChannelID, m.Author.ID, fileTime)
                         }
@@ -748,7 +771,7 @@ func getTwitterUrls(url string) (map[string]string, error) {
     }
 }
 
-func getTwitterStatusUrls(url string) (map[string]string, error) {
+func getTwitterStatusUrls(url string, channelID string) (map[string]string, error) {
     if (twitterConsumerKey == "" || twitterConsumerKey == "your consumer key") ||
         (twitterConsumerSecret == "" || twitterConsumerSecret == "your consumer secret") ||
         (twitterAccessToken == "" || twitterAccessToken == "your access token") ||
@@ -785,7 +808,7 @@ func getTwitterStatusUrls(url string) (map[string]string, error) {
                     links[lastVideoVariant.URL] = ""
                 }
             } else {
-                foundUrls := getDownloadLinks(tweetMedia.MediaURLHttps, false)
+                foundUrls := getDownloadLinks(tweetMedia.MediaURLHttps, channelID, false)
                 for foundUrlKey, foundUrlValue := range foundUrls {
                     links[foundUrlKey] = foundUrlValue
                 }
@@ -794,7 +817,7 @@ func getTwitterStatusUrls(url string) (map[string]string, error) {
     }
     if tweet.Entities != nil {
         for _, tweetUrl := range tweet.Entities.Urls {
-            foundUrls := getDownloadLinks(tweetUrl.ExpandedURL, false)
+            foundUrls := getDownloadLinks(tweetUrl.ExpandedURL, channelID, false)
             for foundUrlKey, foundUrlValue := range foundUrls {
                 links[foundUrlKey] = foundUrlValue
             }
@@ -1448,16 +1471,17 @@ func findDownloadedImageById(id int) *DownloadedImage {
     }
 }
 
-func findDownloadedImageByUrl(url string) *DownloadedImage {
+func findDownloadedImageByUrl(url string) []*DownloadedImage {
     var query interface{}
     json.Unmarshal([]byte(fmt.Sprintf(`[{"eq": "%s", "in": ["Url"]}]`, url)), &query)
     queryResult := make(map[int]struct{})
     db.EvalQuery(query, myDB.Use("Downloads"), &queryResult)
 
+    downloadedImages := make([]*DownloadedImage, 0)
     for id := range queryResult {
-        return findDownloadedImageById(id)
+        downloadedImages = append(downloadedImages, findDownloadedImageById(id))
     }
-    return nil
+    return downloadedImages
 }
 
 func countDownloadedImages() int {
