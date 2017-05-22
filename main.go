@@ -594,7 +594,7 @@ func handleDiscordMessage(m *discordgo.Message) {
                         replyMessage += fmt.Sprintf("@`%s`: **%d** downloads\n", downloads.Key, downloads.Value)
                     }
                 }
-                dg.ChannelMessageSend(m.ChannelID, replyMessage)
+                dg.ChannelMessageSend(m.ChannelID, replyMessage) // TODO: pagify
             case message == "history", historyCommandIsActive:
                 i := 0
                 _, historyCommandIsSet := historyCommandActive[m.ChannelID]
