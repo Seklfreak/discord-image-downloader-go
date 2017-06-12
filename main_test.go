@@ -108,22 +108,22 @@ func TestGetGfycatUrls(t *testing.T) {
 var getInstagramUrlsPictureTests = []urlsTestpair{
     {
         "https://www.instagram.com/p/BHhDAmhAz33/?taken-by=s_sohye",
-        map[string]string{"https://www.instagram.com/p/BHhDAmhAz33/media/?size=l&taken-by=s_sohye": ""},
+        map[string]string{"https://www.instagram.com/p/BHhDAmhAz33/media/?size=l&taken-by=s_sohye": "instagram s_sohye - BHhDAmhAz33.jpg"},
     },
     {
         "https://www.instagram.com/p/BHhDAmhAz33/",
-        map[string]string{"https://www.instagram.com/p/BHhDAmhAz33/media/?size=l": ""},
+        map[string]string{"https://www.instagram.com/p/BHhDAmhAz33/media/?size=l": "instagram s_sohye - BHhDAmhAz33.jpg"},
     },
 }
 
 var getInstagramUrlsVideoTests = []urlsTestpair{
     {
         "https://www.instagram.com/p/BL2_ZIHgYTp/?taken-by=s_sohye",
-        map[string]string{"14811404_233311497085396_338650092456116224_n.mp4": ""},
+        map[string]string{"14811404_233311497085396_338650092456116224_n.mp4": "instagram s_sohye - BL2_ZIHgYTp.mp4"},
     },
     {
         "https://www.instagram.com/p/BL2_ZIHgYTp/",
-        map[string]string{"14811404_233311497085396_338650092456116224_n.mp4": ""},
+        map[string]string{"14811404_233311497085396_338650092456116224_n.mp4": "instagram s_sohye - BL2_ZIHgYTp.mp4"},
     },
 }
 
@@ -131,15 +131,15 @@ var getInstagramUrlsAlbumTests = []urlsTestpair{
     {
         "https://www.instagram.com/p/BRiCc0VjULk/?taken-by=gfriendofficial",
         map[string]string{
-            "17265460_395888184109957_3500310922180689920_n.jpg":  "",
-            "17265456_267171360360765_8110946520456495104_n.jpg":  "",
-            "17265327_1394797493912862_2677004307588448256_n.jpg": ""},
+            "17265460_395888184109957_3500310922180689920_n.jpg":  "instagram gfriendofficial - BRiCc0VjULk",
+            "17265456_267171360360765_8110946520456495104_n.jpg":  "instagram gfriendofficial - BRiCc0VjULk",
+            "17265327_1394797493912862_2677004307588448256_n.jpg": "instagram gfriendofficial - BRiCc0VjULk"},
     },
     {
         "https://www.instagram.com/p/BRhheSPjaQ3/",
         map[string]string{
-            "17125875_306909746390523_8184965703367917568_n.jpg": "",
-            "17266053_188727064951899_2485556569865977856_n.jpg": ""},
+            "17125875_306909746390523_8184965703367917568_n.jpg": "instagram gfriendofficial - BRhheSPjaQ3",
+            "17266053_188727064951899_2485556569865977856_n.jpg": "instagram gfriendofficial - BRhheSPjaQ3"},
     },
 }
 
@@ -173,7 +173,7 @@ func TestGetInstagramUrls(t *testing.T) {
         }
         for keyResult, valueResult := range pair.result {
             for keyExpected, valueExpected := range v {
-                if strings.Contains(keyResult, keyExpected) || valueResult != valueExpected { // CDN location can vary
+                if strings.Contains(keyResult, keyExpected) || strings.Contains(valueResult, valueExpected) { // CDN location can vary
                     t.Errorf("For %s, expected %s, got %s", pair.value, pair.result, v)
                 }
             }
