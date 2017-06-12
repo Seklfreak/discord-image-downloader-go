@@ -71,7 +71,7 @@ var (
 )
 
 const (
-    VERSION                          string = "1.23"
+    VERSION                          string = "1.23.1"
     DATABASE_DIR                     string = "database"
     RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
     RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -866,18 +866,20 @@ func getGfycatUrls(url string) (map[string]string, error) {
 }
 
 func getInstagramUrls(url string) (map[string]string, error) {
+    username, shortcode := getInstagramInfo(url)
+    filename := fmt.Sprintf("instagram %s - %s", username, shortcode)
     // if instagram video
     videoUrl := getInstagramVideoUrl(url)
     if videoUrl != "" {
-        return map[string]string{videoUrl: ""}, nil
+        return map[string]string{videoUrl: filename + filepath.Ext(videoUrl)}, nil
     }
     // if instagram album
     albumUrls := getInstagramAlbumUrls(url)
     if len(albumUrls) > 0 {
         fmt.Println("is instagram album")
         links := make(map[string]string)
-        for _, albumUrl := range albumUrls {
-            links[albumUrl] = ""
+        for i, albumUrl := range albumUrls {
+            links[albumUrl] = filename + " " + strconv.Itoa(i+1) +  filepath.Ext(albumUrl)
         }
         return links, nil
     }
@@ -885,7 +887,58 @@ func getInstagramUrls(url string) (map[string]string, error) {
     afterLastSlash := strings.LastIndex(url, "/")
     mediaUrl := url[:afterLastSlash]
     mediaUrl += strings.Replace(strings.Replace(url[afterLastSlash:], "?", "&", -1), "/", "/media/?size=l", -1)
-    return map[string]string{mediaUrl: ""}, nil
+    return map[string]string{mediaUrl: filename + ".jpg"}, nil
+}
+
+func getInstagramInfo(url string) (string, string) {
+    resp, err := http.Get(url)
+
+    if err != nil {
+        return "N/A", "N/A"
+    }
+
+    defer resp.Body.Close()
+    z := html.NewTokenizer(resp.Body)
+
+ParseLoop:
+    for {
+        tt := z.Next()
+        switch {
+        case tt == html.ErrorToken:
+            break ParseLoop
+        }
+        if tt == html.StartTagToken || tt == html.SelfClosingTagToken {
+            t := z.Token()
+            for _, a := range t.Attr {
+                if a.Key == "type" {
+                    if a.Val == "text/javascript" {
+                        z.Next()
+                        content := string(z.Text())
+                        if strings.Contains(content, "window._sharedData = ") {
+                            content = strings.Replace(content, "window._sharedData = ", "", 1)
+                            content = content[:len(content)-1]
+                            jsonParsed, err := gabs.ParseJSON([]byte(content))
+                            if err != nil {
+                                fmt.Println("error parsing instagram json: ", err)
+                                continue ParseLoop
+                            }
+                            entryChildren, err := jsonParsed.Path("entry_data.PostPage").Children()
+                            if err != nil {
+                                fmt.Println("unable to find entries children: ", err)
+                                continue ParseLoop
+                            }
+                            for _, entryChild := range entryChildren {
+                                shortcode := entryChild.Path("graphql.shortcode_media.shortcode").Data().(string)
+                                username := entryChild.Path("graphql.shortcode_media.owner.username").Data().(string)
+                                return username, shortcode
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return "N/A", "N/A"
 }
 
 func getImgurSingleUrls(url string) (map[string]string, error) {
