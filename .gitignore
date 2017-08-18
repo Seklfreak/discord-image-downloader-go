@@ -33,3 +33,5 @@ testfolder/*
 database*/
 
 .idea/
+
+vendor

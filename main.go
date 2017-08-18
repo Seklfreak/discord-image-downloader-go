@@ -71,7 +71,7 @@ var (
 )
 
 const (
-    VERSION                          string = "1.23.1.1"
+    VERSION                          string = "1.23.2"
     DATABASE_DIR                     string = "database"
     RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
     RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -510,8 +510,12 @@ func handleDiscordMessage(m *discordgo.Message) {
                 for channelId, channelFolder := range ChannelWhitelist {
                     channel, err := dg.Channel(channelId)
                     if err == nil {
-                        if channel.IsPrivate {
-                            replyMessage += fmt.Sprintf("@%s (`#%s`): `%s`\n", channel.Recipient.Username, channelId, channelFolder)
+                        if channel.Type == discordgo.ChannelTypeDM {
+                            channelRecipientUsername := "N/A"
+                            for _, recipient := range channel.Recipients {
+                                channelRecipientUsername = recipient.Username
+                            }
+                            replyMessage += fmt.Sprintf("@%s (`#%s`): `%s`\n", channelRecipientUsername, channelId, channelFolder)
                         } else {
                             guild, err := dg.Guild(channel.GuildID)
                             if err == nil {
@@ -524,8 +528,12 @@ func handleDiscordMessage(m *discordgo.Message) {
                 for channelId, channelFolder := range InteractiveChannelWhitelist {
                     channel, err := dg.Channel(channelId)
                     if err == nil {
-                        if channel.IsPrivate {
-                            replyMessage += fmt.Sprintf("@%s (`#%s`): `%s`\n", channel.Recipient.Username, channelId, channelFolder)
+                        if channel.Type == discordgo.ChannelTypeDM {
+                            channelRecipientUsername := "N/A"
+                            for _, recipient := range channel.Recipients {
+                                channelRecipientUsername = recipient.Username
+                            }
+                            replyMessage += fmt.Sprintf("@%s (`#%s`): `%s`\n", channelRecipientUsername, channelId, channelFolder)
                         } else {
                             guild, err := dg.Guild(channel.GuildID)
                             if err == nil {
@@ -561,8 +569,12 @@ func handleDiscordMessage(m *discordgo.Message) {
                 for _, downloads := range channelStatsSorted {
                     channel, err := dg.Channel(downloads.Key)
                     if err == nil {
-                        if channel.IsPrivate {
-                            replyMessage += fmt.Sprintf("@%s (`#%s`): **%d** downloads\n", channel.Recipient.Username, downloads.Key, downloads.Value)
+                        if channel.Type == discordgo.ChannelTypeDM {
+                            channelRecipientUsername := "N/A"
+                            for _, recipient := range channel.Recipients {
+                                channelRecipientUsername = recipient.Username
+                            }
+                            replyMessage += fmt.Sprintf("@%s (`#%s`): **%d** downloads\n", channelRecipientUsername, downloads.Key, downloads.Value)
                         } else {
                             guild, err := dg.Guild(channel.GuildID)
                             if err == nil {
