@@ -83,7 +83,7 @@ const (
 	REGEXP_URL_GFYCAT                string = `^http(s?):\/\/gfycat\.com\/(gifs\/detail\/)?[A-Za-z]+$`
 	REGEXP_URL_INSTAGRAM             string = `^http(s?):\/\/(www\.)?instagram\.com\/p\/[^/]+\/(\?[^/]+)?$`
 	REGEXP_URL_IMGUR_SINGLE          string = `^http(s?):\/\/(i\.)?imgur\.com\/[A-Za-z0-9]+(\.gifv)?$`
-	REGEXP_URL_IMGUR_ALBUM           string = `^http(s?):\/\/imgur\.com\/a\/[A-Za-z0-9]+$`
+	REGEXP_URL_IMGUR_ALBUM           string = `^http(s?):\/\/imgur\.com\/(a\/|r\/[^\/]+\/)[A-Za-z0-9]+$`
 	REGEXP_URL_GOOGLEDRIVE           string = `^http(s?):\/\/drive\.google\.com\/file\/d\/[^/]+\/view$`
 	REGEXP_URL_GOOGLEDRIVE_FOLDER    string = `^http(s?):\/\/drive\.google\.com\/(drive\/folders\/|open\?id=)([^/]+)$`
 	REGEXP_URL_POSSIBLE_TISTORY_SITE string = `^http(s)?:\/\/[0-9a-zA-Z\.-]+\/(m\/)?(photo\/)?[0-9]+$`
@@ -950,6 +950,8 @@ ParseLoop:
 }
 
 func getImgurSingleUrls(url string) (map[string]string, error) {
+	url = regexp.MustCompile(`(r\/[^\/]+\/)`).ReplaceAllString(url, "") // remove subreddit url
+	fmt.Println(url)
 	url = strings.Replace(url, "imgur.com/", "imgur.com/download/", -1)
 	url = strings.Replace(url, ".gifv", "", -1)
 	return map[string]string{url: ""}, nil
@@ -965,6 +967,9 @@ func getImgurAlbumUrls(url string) (map[string]string, error) {
 	links := make(map[string]string)
 	for _, v := range imgurAlbumObject.Data {
 		links[v.Link] = ""
+	}
+	if len(links) <= 0 {
+		return getImgurSingleUrls(url)
 	}
 	fmt.Printf("[%s] Found imgur album with %d images (url: %s)\n", time.Now().Format(time.Stamp), len(links), url)
 	return links, nil
