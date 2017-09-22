@@ -83,7 +83,7 @@ const (
 	REGEXP_URL_GFYCAT                string = `^http(s?):\/\/gfycat\.com\/(gifs\/detail\/)?[A-Za-z]+$`
 	REGEXP_URL_INSTAGRAM             string = `^http(s?):\/\/(www\.)?instagram\.com\/p\/[^/]+\/(\?[^/]+)?$`
 	REGEXP_URL_IMGUR_SINGLE          string = `^http(s?):\/\/(i\.)?imgur\.com\/[A-Za-z0-9]+(\.gifv)?$`
-	REGEXP_URL_IMGUR_ALBUM           string = `^http(s?):\/\/imgur\.com\/(a\/|r\/[^\/]+\/)[A-Za-z0-9]+$`
+	REGEXP_URL_IMGUR_ALBUM           string = `^http(s?):\/\/imgur\.com\/(a\/|r\/[^\/]+\/)[A-Za-z0-9]+(#[A-Za-z0-9]+)?$`
 	REGEXP_URL_GOOGLEDRIVE           string = `^http(s?):\/\/drive\.google\.com\/file\/d\/[^/]+\/view$`
 	REGEXP_URL_GOOGLEDRIVE_FOLDER    string = `^http(s?):\/\/drive\.google\.com\/(drive\/folders\/|open\?id=)([^/]+)$`
 	REGEXP_URL_POSSIBLE_TISTORY_SITE string = `^http(s)?:\/\/[0-9a-zA-Z\.-]+\/(m\/)?(photo\/)?[0-9]+$`
@@ -958,6 +958,7 @@ func getImgurSingleUrls(url string) (map[string]string, error) {
 }
 
 func getImgurAlbumUrls(url string) (map[string]string, error) {
+	url = regexp.MustCompile(`(#[A-Za-z0-9]+)?$`).ReplaceAllString(url, "") // remove anchor
 	afterLastSlash := strings.LastIndex(url, "/")
 	albumId := url[afterLastSlash+1:]
 	headers := make(map[string]string)
