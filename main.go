@@ -80,7 +80,7 @@ const (
 	REGEXP_URL_TWITTER_STATUS        string = `^http(s?):\/\/(www\.)?twitter\.com\/([A-Za-z0-9-_\.]+\/status\/|statuses\/)([0-9]+)$`
 	REGEXP_URL_TISTORY               string = `^http(s?):\/\/[a-z0-9]+\.uf\.tistory\.com\/(image|original)\/[A-Z0-9]+$`
 	REGEXP_URL_TISTORY_WITH_CDN      string = `^http(s)?:\/\/[0-9a-z]+.daumcdn.net\/[a-z]+\/[a-zA-Z0-9\.]+\/\?scode=mtistory&fname=http(s?)%3A%2F%2F[a-z0-9]+\.uf\.tistory\.com%2F(image|original)%2F[A-Z0-9]+$`
-	REGEXP_URL_GFYCAT                string = `^http(s?):\/\/gfycat\.com\/[A-Za-z]+$`
+	REGEXP_URL_GFYCAT                string = `^http(s?):\/\/gfycat\.com\/(gifs\/detail\/)?[A-Za-z]+$`
 	REGEXP_URL_INSTAGRAM             string = `^http(s?):\/\/(www\.)?instagram\.com\/p\/[^/]+\/(\?[^/]+)?$`
 	REGEXP_URL_IMGUR_SINGLE          string = `^http(s?):\/\/(i\.)?imgur\.com\/[A-Za-z0-9]+(\.gifv)?$`
 	REGEXP_URL_IMGUR_ALBUM           string = `^http(s?):\/\/imgur\.com\/a\/[A-Za-z0-9]+$`
@@ -864,11 +864,7 @@ func getGfycatUrls(url string) (map[string]string, error) {
 		gfycatId := parts[len(parts)-1]
 		gfycatObject := new(GfycatObject)
 		getJson("https://gfycat.com/cajax/get/"+gfycatId, gfycatObject)
-		gfycatUrl := gfycatObject.GfyItem["gifUrl"]
-		if gfycatUrl == "" {
-			gfycatUrl = gfycatObject.GfyItem["mp4Url"]
-			fmt.Println("fallback to gfycat mp4")
-		}
+		gfycatUrl := gfycatObject.GfyItem["mp4Url"]
 		if url == "" {
 			return nil, errors.New("failed to read response from gfycat")
 		} else {
