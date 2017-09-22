@@ -1485,7 +1485,19 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 		fmt.Println("Error while changing date", dUrl, "-", err)
 	}
 
-	fmt.Printf("[%s] Downloaded url: %s to %s\n", time.Now().Format(time.Stamp), dUrl, completePath)
+	sourceChannelName := channelId
+	sourceGuildName := "N/A"
+	sourceChannel, _ := dg.State.Channel(channelId)
+	if sourceChannel != nil && sourceChannel.Name != "" {
+		sourceChannelName = sourceChannel.Name
+		sourceGuild, _ := dg.State.Guild(sourceChannel.GuildID)
+		if sourceGuild != nil && sourceGuild.Name != "" {
+			sourceGuildName = sourceGuild.Name
+		}
+	}
+
+	fmt.Printf("[%s] Saved URL %s to %s from #%s/%s\n",
+		time.Now().Format(time.Stamp), dUrl, completePath, sourceChannelName, sourceGuildName)
 	err = insertDownloadedImage(&DownloadedImage{Url: dUrl, Time: time.Now(), Destination: completePath, ChannelId: channelId, UserId: userId})
 	if err != nil {
 		fmt.Println("Error while writing to database", err)
