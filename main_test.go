@@ -246,7 +246,7 @@ func TestGetImgurAlbumUrls(t *testing.T) {
 				}
 			}
 			if !linkFound {
-				t.Errorf("For %s, expected %s %s, got %s", expectedLink, expectedName, v)
+				t.Errorf("For expected %s %s, got %s", expectedLink, expectedName, v)
 			}
 		}
 	}
