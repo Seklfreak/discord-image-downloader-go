@@ -475,7 +475,7 @@ var getStreamableUrlsTests = []urlsTestpair{
 	{
 		"http://streamable.com/41ajc",
 		map[string]string{
-			"https://cdn-e2.streamable.com/video/mp4/41ajc.mp4": "",
+			"streamablevideo.com/video/mp4/41ajc.mp4": "",
 		},
 	},
 }
@@ -486,13 +486,17 @@ func TestGetStreamableUrls(t *testing.T) {
 		if err != nil {
 			t.Errorf("For %v, expected %v, got %v", pair.value, nil, err)
 		}
-		for key, value := range v {
-			parts := strings.Split(key, "?")
-			delete(v, key)
-			v[parts[0]] = value
-		}
-		if !reflect.DeepEqual(v, pair.result) {
-			t.Errorf("For %s, expected %s, got %s", pair.value, pair.result, v)
+
+		for expectedLink, expectedName := range pair.result {
+			linkFound := false
+			for gotLink, _ := range v {
+				if strings.Contains(gotLink, expectedLink) {
+					linkFound = true
+				}
+			}
+			if !linkFound {
+				t.Errorf("For expected %s %s, got %s", expectedLink, expectedName, v)
+			}
 		}
 	}
 }
