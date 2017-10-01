@@ -489,7 +489,7 @@ func TestGetStreamableUrls(t *testing.T) {
 
 		for expectedLink, expectedName := range pair.result {
 			linkFound := false
-			for gotLink, _ := range v {
+			for gotLink := range v {
 				if strings.Contains(gotLink, expectedLink) {
 					linkFound = true
 				}

@@ -36,7 +36,6 @@ import (
 var (
 	ChannelWhitelist                 map[string]string
 	InteractiveChannelWhitelist      map[string]string
-	BaseDownloadPath                 string
 	RegexpUrlTwitter                 *regexp.Regexp
 	RegexpUrlTwitterStatus           *regexp.Regexp
 	RegexpUrlTistory                 *regexp.Regexp
@@ -463,9 +462,8 @@ func skipDuplicateLinks(linkList map[string]string, channelID string, interactiv
 			}
 		}
 		return newList
-	} else {
-		return linkList
 	}
+	return linkList
 }
 
 func handleDiscordMessage(m *discordgo.Message) {
@@ -782,9 +780,8 @@ func getTwitterUrls(url string) (map[string]string, error) {
 	parts := strings.Split(url, ":")
 	if len(parts) < 2 {
 		return nil, errors.New("unable to parse twitter url")
-	} else {
-		return map[string]string{"https:" + parts[1] + ":orig": filenameFromUrl(parts[1])}, nil
 	}
+	return map[string]string{"https:" + parts[1] + ":orig": filenameFromUrl(parts[1])}, nil
 }
 
 func getTwitterStatusUrls(url string, channelID string) (map[string]string, error) {
@@ -871,9 +868,8 @@ func getGfycatUrls(url string) (map[string]string, error) {
 		gfycatUrl := gfycatObject.GfyItem["mp4Url"]
 		if url == "" {
 			return nil, errors.New("failed to read response from gfycat")
-		} else {
-			return map[string]string{gfycatUrl: ""}, nil
 		}
+		return map[string]string{gfycatUrl: ""}, nil
 	}
 }
 
@@ -984,10 +980,9 @@ func getGoogleDriveUrls(url string) (map[string]string, error) {
 	parts := strings.Split(url, "/")
 	if len(parts) != 7 {
 		return nil, errors.New("unable to parse google drive url")
-	} else {
-		fileId := parts[len(parts)-2]
-		return map[string]string{"https://drive.google.com/uc?export=download&id=" + fileId: ""}, nil
 	}
+	fileId := parts[len(parts)-2]
+	return map[string]string{"https://drive.google.com/uc?export=download&id=" + fileId: ""}, nil
 }
 
 func getGoogleDriveFolderUrls(url string) (map[string]string, error) {
@@ -1138,9 +1133,8 @@ func getFlickrAlbumShortUrls(url string) (map[string]string, error) {
 	}
 	if RegexpUrlFlickrAlbum.MatchString(result.Request.URL.String()) {
 		return getFlickrAlbumUrls(result.Request.URL.String())
-	} else {
-		return nil, errors.New("got invalid url while trying to get long url from short flickr album url")
 	}
+	return nil, errors.New("got invalid url while trying to get long url from short flickr album url")
 }
 
 type StreamableObject struct {
@@ -1231,7 +1225,7 @@ func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
 			if isTistoryCdnUrl == true {
 				finalTistoryUrls, _ := getTistoryWithCDNUrls(foundUrl)
 				if len(finalTistoryUrls) > 0 {
-					for finalTistoryUrl, _ := range finalTistoryUrls {
+					for finalTistoryUrl := range finalTistoryUrls {
 						foundFilename := s.AttrOr("filename", "")
 						links[finalTistoryUrl] = foundFilename
 					}
@@ -1239,7 +1233,7 @@ func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
 			} else if isTistoryUrl == true {
 				finalTistoryUrls, _ := getTistoryUrls(foundUrl)
 				if len(finalTistoryUrls) > 0 {
-					for finalTistoryUrl, _ := range finalTistoryUrls {
+					for finalTistoryUrl := range finalTistoryUrls {
 						foundFilename := s.AttrOr("filename", "")
 						links[finalTistoryUrl] = foundFilename
 					}
@@ -1398,7 +1392,7 @@ func startDownload(dUrl string, filename string, path string, channelId string, 
 	if success == false {
 		fmt.Println("Gave up on downloading", dUrl)
 		if SendNoticesToInteractiveChannels == true {
-			for channelId, _ := range InteractiveChannelWhitelist {
+			for channelId := range InteractiveChannelWhitelist {
 				content := fmt.Sprintf("Gave up on downloading %s, no success after %d retries", dUrl, MaxDownloadRetries)
 				_, err := dg.ChannelMessageSend(channelId, content)
 				if err != nil {
