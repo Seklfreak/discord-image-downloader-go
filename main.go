@@ -70,7 +70,7 @@ var (
 )
 
 const (
-	VERSION                          string = "1.25"
+	VERSION                          string = "1.25.1"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -554,7 +554,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 					channelStats[downloadedImage.ChannelId] += 1
 					userStats[downloadedImage.UserId] += 1
 					if _, ok := userGuilds[downloadedImage.UserId]; !ok {
-						channel, err := dg.Channel(downloadedImage.ChannelId)
+						channel, err := dg.State.Channel(downloadedImage.ChannelId)
 						if err == nil && channel.GuildID != "" {
 							userGuilds[downloadedImage.UserId] = channel.GuildID
 						}
@@ -567,7 +567,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 				replyMessage := fmt.Sprintf("I downloaded **%d** pictures in **%d** channels by **%d** users\n", i, len(channelStats), len(userStats))
 				replyMessage += "**channel breakdown**\n"
 				for _, downloads := range channelStatsSorted {
-					channel, err := dg.Channel(downloads.Key)
+					channel, err := dg.State.Channel(downloads.Key)
 					if err == nil {
 						if channel.Type == discordgo.ChannelTypeDM {
 							channelRecipientUsername := "N/A"
@@ -576,7 +576,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 							}
 							replyMessage += fmt.Sprintf("@%s (`#%s`): **%d** downloads\n", channelRecipientUsername, downloads.Key, downloads.Value)
 						} else {
-							guild, err := dg.Guild(channel.GuildID)
+							guild, err := dg.State.Guild(channel.GuildID)
 							if err == nil {
 								replyMessage += fmt.Sprintf("#%s/%s (`#%s`): **%d** downloads\n", guild.Name, channel.Name, downloads.Key, downloads.Value)
 							} else {
@@ -596,7 +596,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 						break
 					}
 					if guildId, ok := userGuilds[downloads.Key]; ok {
-						user, err := dg.GuildMember(guildId, downloads.Key)
+						user, err := dg.State.Member(guildId, downloads.Key)
 						if err == nil {
 							replyMessage += fmt.Sprintf("@%s: **%d** downloads\n", user.User.Username, downloads.Value)
 						} else {
@@ -1535,10 +1535,7 @@ func findDownloadedImageById(id int) *DownloadedImage {
 	if err != nil {
 		fmt.Println(err)
 	}
-	timeT, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", readBack["Time"].(string))
-	if err != nil {
-		fmt.Println(err)
-	}
+	timeT, _ := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", readBack["Time"].(string))
 	return &DownloadedImage{
 		Url:         readBack["Url"].(string),
 		Time:        timeT,
