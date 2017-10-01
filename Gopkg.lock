@@ -4,8 +4,8 @@
 [[projects]]
   name = "cloud.google.com/go"
   packages = ["compute/metadata"]
-  revision = "44bcd0b2078ba5e7fedbeb36808d1ed893534750"
-  version = "v0.11.0"
+  revision = "f6de2c509ed9d2af648c3c147207eaaf97149aed"
+  version = "v0.14.0"
 
 [[projects]]
   name = "github.com/HouzuoGuo/tiedot"
@@ -35,19 +35,19 @@
   branch = "develop"
   name = "github.com/bwmarrin/discordgo"
   packages = ["."]
-  revision = "308d058bf1db248cd559bf062ae2de3f23db23f5"
+  revision = "7b6a91ac0457d16474690189ee030e2fc252dddd"
 
 [[projects]]
   name = "github.com/cenkalti/backoff"
   packages = ["."]
-  revision = "32cd0c5b3aef12c76ed64aaf678f6c79736be7dc"
-  version = "v1.0.0"
+  revision = "61153c768f31ee5f130071d08fc82b85208528de"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/dghubble/go-twitter"
   packages = ["twitter"]
-  revision = "f74be7f0f20b142558537ca43852457f7c52e051"
+  revision = "c4115fa44a928413e0b857e0eb47376ffde3a61a"
 
 [[projects]]
   name = "github.com/dghubble/oauth1"
@@ -65,7 +65,7 @@
   branch = "master"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "ab9f9a6dab164b7d1246e0e688b0ab7b94d8553e"
+  revision = "130e6b02ab059e7b717a096f397c5b60111cae74"
 
 [[projects]]
   branch = "master"
@@ -83,7 +83,7 @@
   branch = "master"
   name = "github.com/hashicorp/go-version"
   packages = ["."]
-  revision = "03c5bf6be031b6dd45afec16b1cf94fc8938bc77"
+  revision = "fc61389e27c71d120f87031ca8c88a3428f372dd"
 
 [[projects]]
   name = "github.com/mvdan/xurls"
@@ -95,25 +95,25 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["nacl/secretbox","poly1305","salsa20/salsa"]
-  revision = "b176d7def5d71bdd214203491f89843ed217f420"
+  revision = "9419663f5a44be8b34ca85f08abc5fe1be11f8a3"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context","context/ctxhttp","html","html/atom"]
-  revision = "1c05540f6879653db88113bc4a2b70aec4bd491f"
+  revision = "0a9397675ba34b2845f758fe3cd68828369c6517"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/oauth2"
   packages = [".","google","internal","jws","jwt"]
-  revision = "9a379c6b3e95a790ffc43293c2a78dee0d7b6e20"
+  revision = "bb50c06baba3d0c76f9d125c0719093e315b5b44"
 
 [[projects]]
   branch = "master"
   name = "google.golang.org/api"
   packages = ["drive/v3","gensupport","googleapi","googleapi/internal/uritemplates"]
-  revision = "ed10e890a8366167a7ce33fac2b12447987bcb1c"
+  revision = "906273f42cdebd65de3a53f30dd9e23de1b55ba9"
 
 [[projects]]
   name = "google.golang.org/appengine"
