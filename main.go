@@ -542,7 +542,9 @@ func handleDiscordMessage(m *discordgo.Message) {
 						}
 					}
 				}
-				dg.ChannelMessageSend(m.ChannelID, replyMessage)
+				for _, page := range Pagify(replyMessage, "\n") {
+					dg.ChannelMessageSend(m.ChannelID, page)
+				}
 			case message == "stats":
 				dg.ChannelTyping(m.ChannelID)
 				channelStats := make(map[string]int)
@@ -606,7 +608,9 @@ func handleDiscordMessage(m *discordgo.Message) {
 						replyMessage += fmt.Sprintf("@`%s`: **%d** downloads\n", downloads.Key, downloads.Value)
 					}
 				}
-				dg.ChannelMessageSend(m.ChannelID, replyMessage) // TODO: pagify
+				for _, page := range Pagify(replyMessage, "\n") {
+					dg.ChannelMessageSend(m.ChannelID, page)
+				}
 			case message == "history", historyCommandIsActive:
 				i := 0
 				_, historyCommandIsSet := historyCommandActive[m.ChannelID]
@@ -1599,4 +1603,29 @@ func (p PairList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 func updateDiscordStatus() {
 	dg.UpdateStatus(0, fmt.Sprintf("%d pictures downloaded", countDownloadedImages()))
+}
+
+func Pagify(text string, delimiter string) []string {
+	result := make([]string, 0)
+	textParts := strings.Split(text, delimiter)
+	currentOutputPart := ""
+	for _, textPart := range textParts {
+		if len(currentOutputPart)+len(textPart)+len(delimiter) <= 1992 {
+			if len(currentOutputPart) > 0 || len(result) > 0 {
+				currentOutputPart += delimiter + textPart
+			} else {
+				currentOutputPart += textPart
+			}
+		} else {
+			result = append(result, currentOutputPart)
+			currentOutputPart = ""
+			if len(textPart) <= 1992 {
+				currentOutputPart = textPart
+			}
+		}
+	}
+	if currentOutputPart != "" {
+		result = append(result, currentOutputPart)
+	}
+	return result
 }
