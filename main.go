@@ -1469,6 +1469,13 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 	contentTypeParts := strings.Split(contentType, "/")
 	if contentTypeParts[0] != "image" && contentTypeParts[0] != "video" {
 		fmt.Println("No image or video found at", dUrl)
+		if SendNoticesToInteractiveChannels == true {
+			content := fmt.Sprintf("No image or video found at", dUrl)
+			_, err := dg.ChannelMessageSend(ChannelId,content)
+			if err != nil {
+				fmt.Println("Failed to send notice to", channelId, "-", err)
+			}
+		}
 		return true
 	}
 
