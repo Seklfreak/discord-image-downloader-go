@@ -67,6 +67,7 @@ var (
 	SendNoticesToInteractiveChannels bool
 	clientCredentialsJson            string
 	DriveService                     *drive.Service
+	SendNoticesAboutNoImgOrVid       bool
 )
 
 const (
@@ -1469,9 +1470,9 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 	contentTypeParts := strings.Split(contentType, "/")
 	if contentTypeParts[0] != "image" && contentTypeParts[0] != "video" {
 		fmt.Println("No image or video found at", dUrl)
-		if SendNoticesToInteractiveChannels == true {
+		if SendNoticesAboutNoImgOrVid && SendNoticesToInteractiveChannels {
 			content := fmt.Sprintf("No image or video found at", dUrl)
-			_, err := dg.ChannelMessageSend(ChannelId,content)
+			_, err := dg.ChannelMessageSend(channelId, content)
 			if err != nil {
 				fmt.Println("Failed to send notice to", channelId, "-", err)
 			}
