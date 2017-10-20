@@ -1474,7 +1474,7 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 		fmt.Println("No image or video found at", dUrl)
 		if SendNoticesAboutNoImgOrVid == true && SendNoticesToInteractiveChannels == true {
 			for channelId := range InteractiveChannelWhitelist {
-				content := fmt.Printf("No image or video found at %s\n", dUrl)
+				content := fmt.Sprintf("No image or video found at %s\n", dUrl)
 				_, err := dg.ChannelMessageSend(channelId, content)
 				if err != nil {
 					fmt.Println("Failed to send notice to", channelId, "-", err)
