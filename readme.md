@@ -20,7 +20,7 @@ This is a simple tool which downloads pictures (and instagram videos) posted in 
 ## How to use?
 When you run the tool for the first time it creates a `config.ini` file with example values. Edit these values and run the tool for a second time. It should connect to discords api and wait for new messages.
 
-In case you are using two-factor authentication you have to login using your token. Remove the email and password lines under the auth section in the config file and instead put in `token = <your token>`. You can acquire your token from the developer tools in your browser or discord client (`localStorage.token`).
+In case you are using two-factor authentication you have to login using your token. Remove the email and password lines under the auth section in the config file and instead put in `token = <your token>`. You can acquire your token from the developer tools in your browser (`localStorage.token`) or discord client (Control+Shift+I (Windows) or Command+Option+I, click Application, click Local Storage, click `https://discordapp.com`, and find "token" and paste the value).
 
 ## How to download old pictures?
 By default, the tool only downloads new links posted while the tool is running. You can also set up the tool to download the complete history of a channel. To do this you have to run this tool with a separate discord account. Send your second account a dm on your primary account and get the channel id from the direct message channel. Now add this channel id to the config by adding the following lines:
