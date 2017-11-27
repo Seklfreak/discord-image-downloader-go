@@ -316,6 +316,7 @@ func main() {
 
 	if PlayingStatus == true {
 		updateDiscordStatus()
+	}
 
 	// keep program running until CTRL-C is pressed.
 	<-make(chan struct{})
@@ -1512,6 +1513,8 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 
 	if PlayingStatus == true {
 		updateDiscordStatus()
+	}
+
 	return true
 }
 
