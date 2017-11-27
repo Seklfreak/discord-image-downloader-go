@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,7 +25,7 @@ import (
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
 	"github.com/hashicorp/go-version"
-	"github.com/mvdan/xurls"
+	"mvdan.cc/xurls"
 	"golang.org/x/net/context"
 	"golang.org/x/net/html"
 	"golang.org/x/oauth2/google"
@@ -65,12 +66,13 @@ var (
 	twitterAccessTokenSecret         string
 	DownloadTimeout                  int
 	SendNoticesToInteractiveChannels bool
+	PlayingStatus                    bool
 	clientCredentialsJson            string
 	DriveService                     *drive.Service
 )
 
 const (
-	VERSION                          string = "1.25.1"
+	VERSION                          string = "1.26"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -120,26 +122,30 @@ func main() {
 		!cfg.Section("auth").HasKey("token") {
 		cfg.Section("auth").NewKey("email", "your@email.com")
 		cfg.Section("auth").NewKey("password", "your password")
+		cfg.Section("general").NewKey("hide playing status", "false")
 		cfg.Section("general").NewKey("skip edits", "true")
-		cfg.Section("general").NewKey("download tistory sites", "false")
 		cfg.Section("general").NewKey("max download retries", "5")
 		cfg.Section("general").NewKey("download timeout", "60")
 		cfg.Section("general").NewKey("send notices to interactive channels", "false")
-		cfg.Section("channels").NewKey("channelid1", "C:\\full\\path\\1")
-		cfg.Section("channels").NewKey("channelid2", "C:\\full\\path\\2")
-		cfg.Section("channels").NewKey("channelid3", "C:\\full\\path\\3")
+		cfg.Section("general").NewKey("download tistory sites", "false")
+		cfg.Section("channels").NewKey("channel_ID_1", "C:\\valid\\path\\folder1")
+		cfg.Section("channels").NewKey("channel_ID_2", "C:\\valid\\path\\folder2")
+		cfg.Section("channels").NewKey("channel_ID_3", "C:\\valid\\path\\folder3")
 		cfg.Section("flickr").NewKey("api key", "your flickr api key")
 		cfg.Section("twitter").NewKey("consumer key", "your consumer key")
 		cfg.Section("twitter").NewKey("consumer secret", "your consumer secret")
 		cfg.Section("twitter").NewKey("access token", "your access token")
 		cfg.Section("twitter").NewKey("access token secret", "your access token secret")
+		cfg.Section("interactive channels").NewKey("privateChannel_ID_1", "C:\\valid\\path")
 		err = cfg.SaveTo("config.ini")
 
 		if err != nil {
 			fmt.Println("unable to write config file", err)
 			return
 		}
-		fmt.Println("Wrote config file, please fill out and restart the program")
+		fmt.Println("Created new config file, please fill out and restart the program")
+		fmt.Print("Press 'Enter' to exit...")
+		bufio.NewReader(os.Stdin).ReadBytes('\n') 
 		return
 	}
 
@@ -265,10 +271,12 @@ func main() {
 		}
 	}
 
-	DownloadTistorySites = cfg.Section("general").Key("download tistory sites").MustBool()
-	MaxDownloadRetries = cfg.Section("general").Key("max download retries").MustInt(3)
+	DownloadTistorySites = cfg.Section("general").Key("download tistory sites").MustBool(false)
+	MaxDownloadRetries = cfg.Section("general").Key("max download retries").MustInt(5)
 	DownloadTimeout = cfg.Section("general").Key("download timeout").MustInt(60)
 	SendNoticesToInteractiveChannels = cfg.Section("general").Key("send notices to interactive channels").MustBool(false)
+	PlayingStatus = cfg.Section("general").Key("hide playing status").MustBool(false)
+	
 
 	// setup google drive client
 	clientCredentialsJson = cfg.Section("google").Key("client credentials json").MustString("")
@@ -306,7 +314,9 @@ func main() {
 		u.Username)
 	DiscordUserId = u.ID
 
-	updateDiscordStatus()
+	if PlayingStatus == false {
+		updateDiscordStatus()
+	}
 
 	// keep program running until CTRL-C is pressed.
 	<-make(chan struct{})
@@ -479,7 +489,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 		for _, iAttachment := range m.Attachments {
 			startDownload(iAttachment.URL, iAttachment.Filename, folderName, m.ChannelID, m.Author.ID, fileTime)
 		}
-		foundUrls := xurls.Strict.FindAllString(m.Content, -1)
+		foundUrls := xurls.Strict().FindAllString(m.Content, -1)
 		for _, iFoundUrl := range foundUrls {
 			links := getDownloadLinks(iFoundUrl, m.ChannelID, false)
 			for link, filename := range links {
@@ -654,7 +664,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 											startDownload(iAttachment.URL, iAttachment.Filename, folder, message.ChannelID, message.Author.ID, fileTime)
 										}
 									}
-									foundUrls := xurls.Strict.FindAllString(message.Content, -1)
+									foundUrls := xurls.Strict().FindAllString(message.Content, -1)
 									for _, iFoundUrl := range foundUrls {
 										links := getDownloadLinks(iFoundUrl, message.ChannelID, false)
 										for link, filename := range links {
@@ -721,7 +731,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 						interactiveChannelLinkTemp[m.ChannelID] = iAttachment.URL
 						foundLinks = true
 					}
-					foundUrls := xurls.Strict.FindAllString(m.Content, -1)
+					foundUrls := xurls.Strict().FindAllString(m.Content, -1)
 					for _, iFoundUrl := range foundUrls {
 						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path or **cancel** to cancel the download %s", iFoundUrl, folderName))
 						interactiveChannelLinkTemp[m.ChannelID] = iFoundUrl
@@ -1501,7 +1511,10 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 		fmt.Println("Error while writing to database", err)
 	}
 
-	updateDiscordStatus()
+	if PlayingStatus == false {
+		updateDiscordStatus()
+	}
+
 	return true
 }
 
