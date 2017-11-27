@@ -72,7 +72,7 @@ var (
 )
 
 const (
-	VERSION                          string = "1.25.1"
+	VERSION                          string = "1.26"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -122,7 +122,7 @@ func main() {
 		!cfg.Section("auth").HasKey("token") {
 		cfg.Section("auth").NewKey("email", "your@email.com")
 		cfg.Section("auth").NewKey("password", "your password")
-		cfg.Section("general").NewKey("display playing status", "true")
+		cfg.Section("general").NewKey("hide playing status", "false")
 		cfg.Section("general").NewKey("skip edits", "true")
 		cfg.Section("general").NewKey("max download retries", "5")
 		cfg.Section("general").NewKey("download timeout", "60")
@@ -271,11 +271,11 @@ func main() {
 		}
 	}
 
-	DownloadTistorySites = cfg.Section("general").Key("download tistory sites").MustBool()
-	MaxDownloadRetries = cfg.Section("general").Key("max download retries").MustInt(3)
+	DownloadTistorySites = cfg.Section("general").Key("download tistory sites").MustBool(false)
+	MaxDownloadRetries = cfg.Section("general").Key("max download retries").MustInt(5)
 	DownloadTimeout = cfg.Section("general").Key("download timeout").MustInt(60)
 	SendNoticesToInteractiveChannels = cfg.Section("general").Key("send notices to interactive channels").MustBool(false)
-	PlayingStatus = cfg.Section("general").Key("display playing status").MustBool()
+	PlayingStatus = cfg.Section("general").Key("hide playing status").MustBool(false)
 	
 
 	// setup google drive client
@@ -314,7 +314,7 @@ func main() {
 		u.Username)
 	DiscordUserId = u.ID
 
-	if PlayingStatus == true {
+	if PlayingStatus == false {
 		updateDiscordStatus()
 	}
 
@@ -1511,7 +1511,7 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 		fmt.Println("Error while writing to database", err)
 	}
 
-	if PlayingStatus == true {
+	if PlayingStatus == false {
 		updateDiscordStatus()
 	}
 
