@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -121,25 +122,28 @@ func main() {
 		cfg.Section("auth").NewKey("email", "your@email.com")
 		cfg.Section("auth").NewKey("password", "your password")
 		cfg.Section("general").NewKey("skip edits", "true")
-		cfg.Section("general").NewKey("download tistory sites", "false")
 		cfg.Section("general").NewKey("max download retries", "5")
 		cfg.Section("general").NewKey("download timeout", "60")
 		cfg.Section("general").NewKey("send notices to interactive channels", "false")
-		cfg.Section("channels").NewKey("channelid1", "C:\\full\\path\\1")
-		cfg.Section("channels").NewKey("channelid2", "C:\\full\\path\\2")
-		cfg.Section("channels").NewKey("channelid3", "C:\\full\\path\\3")
+		cfg.Section("general").NewKey("download tistory sites", "false")
+		cfg.Section("channels").NewKey("channel_ID_1", "C:\\valid\\path\\folder1")
+		cfg.Section("channels").NewKey("channel_ID_2", "C:\\valid\\path\\folder2")
+		cfg.Section("channels").NewKey("channel_ID_3", "C:\\valid\\path\\folder3")
 		cfg.Section("flickr").NewKey("api key", "your flickr api key")
 		cfg.Section("twitter").NewKey("consumer key", "your consumer key")
 		cfg.Section("twitter").NewKey("consumer secret", "your consumer secret")
 		cfg.Section("twitter").NewKey("access token", "your access token")
 		cfg.Section("twitter").NewKey("access token secret", "your access token secret")
+		cfg.Section("interactive channels").NewKey("privateChannel_ID_1", "C:\\valid\\path")
 		err = cfg.SaveTo("config.ini")
 
 		if err != nil {
 			fmt.Println("unable to write config file", err)
 			return
 		}
-		fmt.Println("Wrote config file, please fill out and restart the program")
+		fmt.Println("Created new config file, please fill out and restart the program")
+		fmt.Print("Press 'Enter' to exit...")
+		bufio.NewReader(os.Stdin).ReadBytes('\n') 
 		return
 	}
 
