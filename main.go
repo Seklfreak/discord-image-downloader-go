@@ -66,6 +66,7 @@ var (
 	twitterAccessTokenSecret         string
 	DownloadTimeout                  int
 	SendNoticesToInteractiveChannels bool
+	PlayingStatus                    bool
 	clientCredentialsJson            string
 	DriveService                     *drive.Service
 )
@@ -121,6 +122,7 @@ func main() {
 		!cfg.Section("auth").HasKey("token") {
 		cfg.Section("auth").NewKey("email", "your@email.com")
 		cfg.Section("auth").NewKey("password", "your password")
+		cfg.Section("general").NewKey("display playing status", "true")
 		cfg.Section("general").NewKey("skip edits", "true")
 		cfg.Section("general").NewKey("max download retries", "5")
 		cfg.Section("general").NewKey("download timeout", "60")
@@ -273,6 +275,8 @@ func main() {
 	MaxDownloadRetries = cfg.Section("general").Key("max download retries").MustInt(3)
 	DownloadTimeout = cfg.Section("general").Key("download timeout").MustInt(60)
 	SendNoticesToInteractiveChannels = cfg.Section("general").Key("send notices to interactive channels").MustBool(false)
+	PlayingStatus = cfg.Section("general").Key("display playing status").MustBool()
+	
 
 	// setup google drive client
 	clientCredentialsJson = cfg.Section("google").Key("client credentials json").MustString("")
@@ -310,7 +314,8 @@ func main() {
 		u.Username)
 	DiscordUserId = u.ID
 
-	updateDiscordStatus()
+	if PlayingStatus == true {
+		updateDiscordStatus()
 
 	// keep program running until CTRL-C is pressed.
 	<-make(chan struct{})
@@ -1505,7 +1510,8 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 		fmt.Println("Error while writing to database", err)
 	}
 
-	updateDiscordStatus()
+	if PlayingStatus == true {
+		updateDiscordStatus()
 	return true
 }
 
