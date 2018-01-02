@@ -3,6 +3,10 @@
 
 [Download the latest release](https://github.com/Seklfreak/discord-image-downloader-go/releases/latest)
 
+## Discord SelfBots are forbidden!
+[Official Statement](https://support.discordapp.com/hc/en-us/articles/115002192352-Automated-user-accounts-self-bots-)
+### You have been warned.
+
 This is a simple tool which downloads pictures (and instagram videos) posted in discord channels of your choice to a local folder. It handles various sources like twitter differently to make sure to download the best quality available.
 
 ## Websites currently supported
