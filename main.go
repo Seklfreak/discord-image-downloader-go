@@ -70,7 +70,7 @@ var (
 )
 
 const (
-	VERSION                          string = "1.25.1"
+	VERSION                          string = "1.26"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -476,6 +476,9 @@ func handleDiscordMessage(m *discordgo.Message) {
 				fmt.Println(err)
 			}
 		}
+		if m.Author == nil {
+			m.Author = new(discordgo.User)
+		}
 		for _, iAttachment := range m.Attachments {
 			startDownload(iAttachment.URL, iAttachment.Filename, folderName, m.ChannelID, m.Author.ID, fileTime)
 		}
@@ -484,6 +487,25 @@ func handleDiscordMessage(m *discordgo.Message) {
 			links := getDownloadLinks(iFoundUrl, m.ChannelID, false)
 			for link, filename := range links {
 				startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
+			}
+		}
+		if m.Embeds != nil && len(m.Embeds) > 0 {
+			for _, embed := range m.Embeds {
+				if embed.URL != "" {
+					links := getDownloadLinks(embed.URL, m.ChannelID, false)
+					for link, filename := range links {
+						startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
+					}
+				}
+				if embed.Description != "" {
+					foundUrls := xurls.Strict.FindAllString(embed.Description, -1)
+					for _, iFoundUrl := range foundUrls {
+						links := getDownloadLinks(iFoundUrl, m.ChannelID, false)
+						for link, filename := range links {
+							startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
+						}
+					}
+				}
 			}
 		}
 	} else if folderName, ok := InteractiveChannelWhitelist[m.ChannelID]; ok {
