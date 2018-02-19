@@ -70,7 +70,7 @@ var (
 )
 
 const (
-	VERSION                          string = "1.26.1"
+	VERSION                          string = "1.26.2"
 	DATABASE_DIR                     string = "database"
 	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -504,6 +504,18 @@ func handleDiscordMessage(m *discordgo.Message) {
 						for link, filename := range links {
 							startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
 						}
+					}
+				}
+				if embed.Image != nil && embed.Image.URL != "" {
+					links := getDownloadLinks(embed.Image.URL, m.ChannelID, false)
+					for link, filename := range links {
+						startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
+					}
+				}
+				if embed.Video != nil && embed.Video.URL != "" {
+					links := getDownloadLinks(embed.Video.URL, m.ChannelID, false)
+					for link, filename := range links {
+						startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
 					}
 				}
 			}
