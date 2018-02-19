@@ -493,6 +493,10 @@ func handleDiscordMessage(m *discordgo.Message) {
 		}
 		if m.Embeds != nil && len(m.Embeds) > 0 {
 			for _, embed := range m.Embeds {
+				if embed.Provider != nil {
+					// skip preview official embeds to prevent duplictes
+					continue
+				}
 				if embed.URL != "" {
 					links := getDownloadLinks(embed.URL, m.ChannelID, false)
 					for link, filename := range links {
