@@ -319,7 +319,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 }
 
 func messageUpdate(s *discordgo.Session, m *discordgo.MessageUpdate) {
-	handleDiscordMessage(m.Message)
+	if m.EditedTimestamp != discordgo.Timestamp("") {
+		handleDiscordMessage(m.Message)
+	}
 }
 
 func getDownloadLinks(url string, channelID string, interactive bool) map[string]string {
