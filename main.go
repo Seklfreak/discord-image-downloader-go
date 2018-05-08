@@ -70,26 +70,26 @@ var (
 )
 
 const (
-	VERSION                          string = "1.27.1"
-	DATABASE_DIR                     string = "database"
-	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
-	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
-	IMGUR_CLIENT_ID                  string = "a39473314df3f59"
-	REGEXP_URL_TWITTER               string = `^http(s?):\/\/pbs(-[0-9]+)?\.twimg\.com\/media\/[^\./]+\.(jpg|png)((\:[a-z]+)?)$`
-	REGEXP_URL_TWITTER_STATUS        string = `^http(s?):\/\/(www\.)?twitter\.com\/([A-Za-z0-9-_\.]+\/status\/|statuses\/)([0-9]+)$`
-	REGEXP_URL_TISTORY               string = `^http(s?):\/\/[a-z0-9]+\.uf\.tistory\.com\/(image|original)\/[A-Z0-9]+$`
-	REGEXP_URL_TISTORY_WITH_CDN      string = `^http(s)?:\/\/[0-9a-z]+.daumcdn.net\/[a-z]+\/[a-zA-Z0-9\.]+\/\?scode=mtistory&fname=http(s?)%3A%2F%2F[a-z0-9]+\.uf\.tistory\.com%2F(image|original)%2F[A-Z0-9]+$`
-	REGEXP_URL_GFYCAT                string = `^http(s?):\/\/gfycat\.com\/(gifs\/detail\/)?[A-Za-z]+$`
-	REGEXP_URL_INSTAGRAM             string = `^http(s?):\/\/(www\.)?instagram\.com\/p\/[^/]+\/(\?[^/]+)?$`
-	REGEXP_URL_IMGUR_SINGLE          string = `^http(s?):\/\/(i\.)?imgur\.com\/[A-Za-z0-9]+(\.gifv)?$`
-	REGEXP_URL_IMGUR_ALBUM           string = `^http(s?):\/\/imgur\.com\/(a\/|gallery\/|r\/[^\/]+\/)[A-Za-z0-9]+(#[A-Za-z0-9]+)?$`
-	REGEXP_URL_GOOGLEDRIVE           string = `^http(s?):\/\/drive\.google\.com\/file\/d\/[^/]+\/view$`
-	REGEXP_URL_GOOGLEDRIVE_FOLDER    string = `^http(s?):\/\/drive\.google\.com\/(drive\/folders\/|open\?id=)([^/]+)$`
-	REGEXP_URL_POSSIBLE_TISTORY_SITE string = `^http(s)?:\/\/[0-9a-zA-Z\.-]+\/(m\/)?(photo\/)?[0-9]+$`
-	REGEXP_URL_FLICKR_PHOTO          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/([0-9]+)(\/)?(\/in\/album-([0-9]+)(\/)?)?$`
-	REGEXP_URL_FLICKR_ALBUM          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/(([0-9]+)@([A-Z0-9]+)|[A-Za-z0-9]+)\/(albums\/(with\/)?|(sets\/)?)([0-9]+)(\/)?$`
-	REGEXP_URL_FLICKR_ALBUM_SHORT    string = `^http(s)?:\/\/((www\.)?flickr\.com\/gp\/[0-9]+@[A-Z0-9]+\/[A-Za-z0-9]+|flic\.kr\/s\/[a-zA-Z0-9]+)$`
-	REGEXP_URL_STREAMABLE            string = `^http(s?):\/\/(www\.)?streamable\.com\/([0-9a-z]+)$`
+	VERSION                          = "1.28"
+	DATABASE_DIR                     = "database"
+	RELEASE_URL                      = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
+	RELEASE_API_URL                  = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
+	IMGUR_CLIENT_ID                  = "a39473314df3f59"
+	REGEXP_URL_TWITTER               = `^http(s?):\/\/pbs(-[0-9]+)?\.twimg\.com\/media\/[^\./]+\.(jpg|png)((\:[a-z]+)?)$`
+	REGEXP_URL_TWITTER_STATUS        = `^http(s?):\/\/(www\.)?twitter\.com\/([A-Za-z0-9-_\.]+\/status\/|statuses\/)([0-9]+)$`
+	REGEXP_URL_TISTORY               = `^http(s?):\/\/[a-z0-9]+\.uf\.tistory\.com\/(image|original)\/[A-Z0-9]+$`
+	REGEXP_URL_TISTORY_WITH_CDN      = `^http(s)?:\/\/[0-9a-z]+.daumcdn.net\/[a-z]+\/[a-zA-Z0-9\.]+\/\?scode=mtistory&fname=http(s?)%3A%2F%2F[a-z0-9]+\.uf\.tistory\.com%2F(image|original)%2F[A-Z0-9]+$`
+	REGEXP_URL_GFYCAT                = `^http(s?):\/\/gfycat\.com\/(gifs\/detail\/)?[A-Za-z]+$`
+	REGEXP_URL_INSTAGRAM             = `^http(s?):\/\/(www\.)?instagram\.com\/p\/[^/]+\/(\?[^/]+)?$`
+	REGEXP_URL_IMGUR_SINGLE          = `^http(s?):\/\/(i\.)?imgur\.com\/[A-Za-z0-9]+(\.gifv)?$`
+	REGEXP_URL_IMGUR_ALBUM           = `^http(s?):\/\/imgur\.com\/(a\/|gallery\/|r\/[^\/]+\/)[A-Za-z0-9]+(#[A-Za-z0-9]+)?$`
+	REGEXP_URL_GOOGLEDRIVE           = `^http(s?):\/\/drive\.google\.com\/file\/d\/[^/]+\/view$`
+	REGEXP_URL_GOOGLEDRIVE_FOLDER    = `^http(s?):\/\/drive\.google\.com\/(drive\/folders\/|open\?id=)([^/]+)$`
+	REGEXP_URL_POSSIBLE_TISTORY_SITE = `^http(s)?:\/\/[0-9a-zA-Z\.-]+\/(m\/)?(photo\/)?[0-9]+$`
+	REGEXP_URL_FLICKR_PHOTO          = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/([0-9]+)(\/)?(\/in\/album-([0-9]+)(\/)?)?$`
+	REGEXP_URL_FLICKR_ALBUM          = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/(([0-9]+)@([A-Z0-9]+)|[A-Za-z0-9]+)\/(albums\/(with\/)?|(sets\/)?)([0-9]+)(\/)?$`
+	REGEXP_URL_FLICKR_ALBUM_SHORT    = `^http(s)?:\/\/((www\.)?flickr\.com\/gp\/[0-9]+@[A-Z0-9]+\/[A-Za-z0-9]+|flic\.kr\/s\/[a-zA-Z0-9]+)$`
+	REGEXP_URL_STREAMABLE            = `^http(s?):\/\/(www\.)?streamable\.com\/([0-9a-z]+)$`
 )
 
 type GfycatObject struct {
@@ -324,118 +324,118 @@ func messageUpdate(s *discordgo.Session, m *discordgo.MessageUpdate) {
 	}
 }
 
-func getDownloadLinks(url string, channelID string, interactive bool) map[string]string {
-	if RegexpUrlTwitter.MatchString(url) {
-		links, err := getTwitterUrls(url)
+func getDownloadLinks(inputURL string, channelID string, interactive bool) map[string]string {
+	if RegexpUrlTwitter.MatchString(inputURL) {
+		links, err := getTwitterUrls(inputURL)
 		if err != nil {
-			fmt.Println("twitter url failed,", url, ",", err)
+			fmt.Println("twitter inputURL failed,", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlTwitterStatus.MatchString(url) {
-		links, err := getTwitterStatusUrls(url, channelID)
+	if RegexpUrlTwitterStatus.MatchString(inputURL) {
+		links, err := getTwitterStatusUrls(inputURL, channelID)
 		if err != nil {
-			fmt.Println("twitter status url failed,", url, ",", err)
+			fmt.Println("twitter status inputURL failed,", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlTistory.MatchString(url) {
-		links, err := getTistoryUrls(url)
+	if RegexpUrlTistory.MatchString(inputURL) {
+		links, err := getTistoryUrls(inputURL)
 		if err != nil {
-			fmt.Println("tistory url failed,", url, ",", err)
+			fmt.Println("tistory inputURL failed,", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlGfycat.MatchString(url) {
-		links, err := getGfycatUrls(url)
+	if RegexpUrlGfycat.MatchString(inputURL) {
+		links, err := getGfycatUrls(inputURL)
 		if err != nil {
-			fmt.Println("gfycat url failed,", url, ",", err)
+			fmt.Println("gfycat inputURL failed,", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlInstagram.MatchString(url) {
-		links, err := getInstagramUrls(url)
+	if RegexpUrlInstagram.MatchString(inputURL) {
+		links, err := getInstagramUrls(inputURL)
 		if err != nil {
-			fmt.Println("instagram url failed,", url, ",", err)
+			fmt.Println("instagram inputURL failed,", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlImgurSingle.MatchString(url) {
-		links, err := getImgurSingleUrls(url)
+	if RegexpUrlImgurSingle.MatchString(inputURL) {
+		links, err := getImgurSingleUrls(inputURL)
 		if err != nil {
-			fmt.Println("imgur single url failed, ", url, ",", err)
+			fmt.Println("imgur single inputURL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlImgurAlbum.MatchString(url) {
-		links, err := getImgurAlbumUrls(url)
+	if RegexpUrlImgurAlbum.MatchString(inputURL) {
+		links, err := getImgurAlbumUrls(inputURL)
 		if err != nil {
-			fmt.Println("imgur album url failed, ", url, ",", err)
+			fmt.Println("imgur album inputURL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlGoogleDrive.MatchString(url) {
-		links, err := getGoogleDriveUrls(url)
+	if RegexpUrlGoogleDrive.MatchString(inputURL) {
+		links, err := getGoogleDriveUrls(inputURL)
 		if err != nil {
-			fmt.Println("google drive album url failed, ", url, ",", err)
+			fmt.Println("google drive album inputURL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlFlickrPhoto.MatchString(url) {
-		links, err := getFlickrPhotoUrls(url)
+	if RegexpUrlFlickrPhoto.MatchString(inputURL) {
+		links, err := getFlickrPhotoUrls(inputURL)
 		if err != nil {
-			fmt.Println("flickr photo url failed, ", url, ",", err)
+			fmt.Println("flickr photo inputURL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlFlickrAlbum.MatchString(url) {
-		links, err := getFlickrAlbumUrls(url)
+	if RegexpUrlFlickrAlbum.MatchString(inputURL) {
+		links, err := getFlickrAlbumUrls(inputURL)
 		if err != nil {
-			fmt.Println("flickr album url failed, ", url, ",", err)
+			fmt.Println("flickr album inputURL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlFlickrAlbumShort.MatchString(url) {
-		links, err := getFlickrAlbumShortUrls(url)
+	if RegexpUrlFlickrAlbumShort.MatchString(inputURL) {
+		links, err := getFlickrAlbumShortUrls(inputURL)
 		if err != nil {
-			fmt.Println("flickr album short url failed, ", url, ",", err)
+			fmt.Println("flickr album short inputURL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlStreamable.MatchString(url) {
-		links, err := getStreamableUrls(url)
+	if RegexpUrlStreamable.MatchString(inputURL) {
+		links, err := getStreamableUrls(inputURL)
 		if err != nil {
-			fmt.Println("streamable url failed, ", url, ",", err)
+			fmt.Println("streamable inputURL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
 	if DownloadTistorySites {
-		if RegexpUrlPossibleTistorySite.MatchString(url) {
-			links, err := getPossibleTistorySiteUrls(url)
+		if RegexpUrlPossibleTistorySite.MatchString(inputURL) {
+			links, err := getPossibleTistorySiteUrls(inputURL)
 			if err != nil {
-				fmt.Println("checking for tistory site failed, ", url, ",", err)
+				fmt.Println("checking for tistory site failed, ", inputURL, ",", err)
 			} else if len(links) > 0 {
 				return skipDuplicateLinks(links, channelID, interactive)
 			}
 		}
 	}
-	if RegexpUrlGoogleDriveFolder.MatchString(url) {
+	if RegexpUrlGoogleDriveFolder.MatchString(inputURL) {
 		if interactive {
-			links, err := getGoogleDriveFolderUrls(url)
+			links, err := getGoogleDriveFolderUrls(inputURL)
 			if err != nil {
-				fmt.Println("google drive folder url failed, ", url, ",", err)
+				fmt.Println("google drive folder inputURL failed, ", inputURL, ",", err)
 			} else if len(links) > 0 {
 				return skipDuplicateLinks(links, channelID, interactive)
 			}
@@ -443,7 +443,18 @@ func getDownloadLinks(url string, channelID string, interactive bool) map[string
 			fmt.Println("google drive folder only accepted in interactive channels")
 		}
 	}
-	return map[string]string{url: ""}
+
+	// try without queries
+	parsedURL, err := url.Parse(inputURL)
+	if err == nil {
+		parsedURL.RawQuery = ""
+		inputURLWithoutQueries := parsedURL.String()
+		if inputURLWithoutQueries != inputURL {
+			return getDownloadLinks(inputURLWithoutQueries, channelID, interactive)
+		}
+	}
+
+	return map[string]string{inputURL: ""}
 }
 
 func skipDuplicateLinks(linkList map[string]string, channelID string, interactive bool) map[string]string {
