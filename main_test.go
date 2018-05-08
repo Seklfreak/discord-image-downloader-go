@@ -323,7 +323,7 @@ func TestGetPossibleTistorySiteUrls(t *testing.T) {
 		if err != nil {
 			t.Errorf("For %v, expected %v, got %v", pair.value, nil, err)
 		}
-		if len(pair.result) != len(v) { // only check filenames, urls may vary
+		if len(pair.result) > len(v) { // only check that received amount of posts >= expected amount of posts
 			t.Errorf("For %s, expected %s, got %s", pair.value, pair.result, v)
 		}
 	}
@@ -475,7 +475,7 @@ var getStreamableUrlsTests = []urlsTestpair{
 	{
 		"http://streamable.com/41ajc",
 		map[string]string{
-			"streamablevideo.com/video/mp4/41ajc.mp4": "",
+			"streamable.com/video/mp4/41ajc.mp4": "",
 		},
 	},
 }

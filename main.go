@@ -935,7 +935,7 @@ func getInstagramUrls(url string) (map[string]string, error) {
 	// if instagram album
 	albumUrls := getInstagramAlbumUrls(url)
 	if len(albumUrls) > 0 {
-		fmt.Println("is instagram album")
+		//fmt.Println("is instagram album")
 		links := make(map[string]string)
 		for i, albumUrl := range albumUrls {
 			links[albumUrl] = filename + " " + strconv.Itoa(i+1) + filepath.Ext(albumUrl)
@@ -1236,6 +1236,7 @@ func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
 		return nil, err
 	}
 	request.Header.Add("Accept-Encoding", "identity")
+	request.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36")
 	respHead, err := client.Do(request)
 	if err != nil {
 		return nil, err
@@ -1256,6 +1257,7 @@ func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
 		return nil, err
 	}
 	request.Header.Add("Accept-Encoding", "identity")
+	request.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36")
 	resp, err := client.Do(request)
 	if err != nil {
 		return nil, err
@@ -1270,7 +1272,7 @@ func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
 
 	doc.Find(".article img, #content img, div[role=main] img, .section_blogview img").Each(func(i int, s *goquery.Selection) {
 		foundUrl, exists := s.Attr("src")
-		if exists == true {
+		if exists {
 			isTistoryCdnUrl := RegexpUrlTistoryWithCDN.MatchString(foundUrl)
 			isTistoryUrl := RegexpUrlTistory.MatchString(foundUrl)
 			if isTistoryCdnUrl == true {
