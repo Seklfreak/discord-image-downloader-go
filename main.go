@@ -24,13 +24,13 @@ import (
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
 	"github.com/hashicorp/go-version"
-	"github.com/mvdan/xurls"
 	"golang.org/x/net/context"
 	"golang.org/x/net/html"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/googleapi"
 	"gopkg.in/ini.v1"
+	"mvdan.cc/xurls"
 )
 
 var (
@@ -495,7 +495,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 		for _, iAttachment := range m.Attachments {
 			startDownload(iAttachment.URL, iAttachment.Filename, folderName, m.ChannelID, m.Author.ID, fileTime)
 		}
-		foundUrls := xurls.Strict.FindAllString(m.Content, -1)
+		foundUrls := xurls.Strict().FindAllString(m.Content, -1)
 		for _, iFoundUrl := range foundUrls {
 			links := getDownloadLinks(iFoundUrl, m.ChannelID, false)
 			for link, filename := range links {
@@ -515,7 +515,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 					}
 				}
 				if embed.Description != "" {
-					foundUrls := xurls.Strict.FindAllString(embed.Description, -1)
+					foundUrls := xurls.Strict().FindAllString(embed.Description, -1)
 					for _, iFoundUrl := range foundUrls {
 						links := getDownloadLinks(iFoundUrl, m.ChannelID, false)
 						for link, filename := range links {
@@ -705,7 +705,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 											startDownload(iAttachment.URL, iAttachment.Filename, folder, message.ChannelID, message.Author.ID, fileTime)
 										}
 									}
-									foundUrls := xurls.Strict.FindAllString(message.Content, -1)
+									foundUrls := xurls.Strict().FindAllString(message.Content, -1)
 									for _, iFoundUrl := range foundUrls {
 										links := getDownloadLinks(iFoundUrl, message.ChannelID, false)
 										for link, filename := range links {
@@ -772,7 +772,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 						interactiveChannelLinkTemp[m.ChannelID] = iAttachment.URL
 						foundLinks = true
 					}
-					foundUrls := xurls.Strict.FindAllString(m.Content, -1)
+					foundUrls := xurls.Strict().FindAllString(m.Content, -1)
 					for _, iFoundUrl := range foundUrls {
 						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path or **cancel** to cancel the download %s", iFoundUrl, folderName))
 						interactiveChannelLinkTemp[m.ChannelID] = iFoundUrl
