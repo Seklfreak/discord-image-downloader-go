@@ -76,7 +76,7 @@ const (
 	RELEASE_API_URL                  = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
 	IMGUR_CLIENT_ID                  = "a39473314df3f59"
 	REGEXP_URL_TWITTER               = `^http(s?):\/\/pbs(-[0-9]+)?\.twimg\.com\/media\/[^\./]+\.(jpg|png)((\:[a-z]+)?)$`
-	REGEXP_URL_TWITTER_STATUS        = `^http(s?):\/\/(www\.)?twitter\.com\/([A-Za-z0-9-_\.]+\/status\/|statuses\/)([0-9]+)$`
+	REGEXP_URL_TWITTER_STATUS        = `^http(s?):\/\/(www\.)?twitter\.com\/([A-Za-z0-9-_\.]+\/status\/|statuses\/|i\/web\/status\/)([0-9]+)$`
 	REGEXP_URL_TISTORY               = `^http(s?):\/\/[a-z0-9]+\.uf\.tistory\.com\/(image|original)\/[A-Z0-9]+$`
 	REGEXP_URL_TISTORY_WITH_CDN      = `^http(s)?:\/\/[0-9a-z]+.daumcdn.net\/[a-z]+\/[a-zA-Z0-9\.]+\/\?scode=mtistory&fname=http(s?)%3A%2F%2F[a-z0-9]+\.uf\.tistory\.com%2F(image|original)%2F[A-Z0-9]+$`
 	REGEXP_URL_GFYCAT                = `^http(s?):\/\/gfycat\.com\/(gifs\/detail\/)?[A-Za-z]+$`
@@ -328,7 +328,7 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 	if RegexpUrlTwitter.MatchString(inputURL) {
 		links, err := getTwitterUrls(inputURL)
 		if err != nil {
-			fmt.Println("twitter inputURL failed,", inputURL, ",", err)
+			fmt.Println("twitter URL failed,", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
@@ -336,7 +336,7 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 	if RegexpUrlTwitterStatus.MatchString(inputURL) {
 		links, err := getTwitterStatusUrls(inputURL, channelID)
 		if err != nil {
-			fmt.Println("twitter status inputURL failed,", inputURL, ",", err)
+			fmt.Println("twitter status URL failed,", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
@@ -344,7 +344,7 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 	if RegexpUrlTistory.MatchString(inputURL) {
 		links, err := getTistoryUrls(inputURL)
 		if err != nil {
-			fmt.Println("tistory inputURL failed,", inputURL, ",", err)
+			fmt.Println("tistory URL failed,", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
@@ -352,7 +352,7 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 	if RegexpUrlGfycat.MatchString(inputURL) {
 		links, err := getGfycatUrls(inputURL)
 		if err != nil {
-			fmt.Println("gfycat inputURL failed,", inputURL, ",", err)
+			fmt.Println("gfycat URL failed,", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
@@ -360,7 +360,7 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 	if RegexpUrlInstagram.MatchString(inputURL) {
 		links, err := getInstagramUrls(inputURL)
 		if err != nil {
-			fmt.Println("instagram inputURL failed,", inputURL, ",", err)
+			fmt.Println("instagram URL failed,", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
@@ -368,7 +368,7 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 	if RegexpUrlImgurSingle.MatchString(inputURL) {
 		links, err := getImgurSingleUrls(inputURL)
 		if err != nil {
-			fmt.Println("imgur single inputURL failed, ", inputURL, ",", err)
+			fmt.Println("imgur single URL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
@@ -376,7 +376,7 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 	if RegexpUrlImgurAlbum.MatchString(inputURL) {
 		links, err := getImgurAlbumUrls(inputURL)
 		if err != nil {
-			fmt.Println("imgur album inputURL failed, ", inputURL, ",", err)
+			fmt.Println("imgur album URL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
@@ -384,7 +384,7 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 	if RegexpUrlGoogleDrive.MatchString(inputURL) {
 		links, err := getGoogleDriveUrls(inputURL)
 		if err != nil {
-			fmt.Println("google drive album inputURL failed, ", inputURL, ",", err)
+			fmt.Println("google drive album URL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
@@ -392,7 +392,7 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 	if RegexpUrlFlickrPhoto.MatchString(inputURL) {
 		links, err := getFlickrPhotoUrls(inputURL)
 		if err != nil {
-			fmt.Println("flickr photo inputURL failed, ", inputURL, ",", err)
+			fmt.Println("flickr photo URL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
@@ -400,7 +400,7 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 	if RegexpUrlFlickrAlbum.MatchString(inputURL) {
 		links, err := getFlickrAlbumUrls(inputURL)
 		if err != nil {
-			fmt.Println("flickr album inputURL failed, ", inputURL, ",", err)
+			fmt.Println("flickr album URL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
@@ -408,7 +408,7 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 	if RegexpUrlFlickrAlbumShort.MatchString(inputURL) {
 		links, err := getFlickrAlbumShortUrls(inputURL)
 		if err != nil {
-			fmt.Println("flickr album short inputURL failed, ", inputURL, ",", err)
+			fmt.Println("flickr album short URL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
@@ -416,7 +416,7 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 	if RegexpUrlStreamable.MatchString(inputURL) {
 		links, err := getStreamableUrls(inputURL)
 		if err != nil {
-			fmt.Println("streamable inputURL failed, ", inputURL, ",", err)
+			fmt.Println("streamable URL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
@@ -435,7 +435,7 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 		if interactive {
 			links, err := getGoogleDriveFolderUrls(inputURL)
 			if err != nil {
-				fmt.Println("google drive folder inputURL failed, ", inputURL, ",", err)
+				fmt.Println("google drive folder URL failed, ", inputURL, ",", err)
 			} else if len(links) > 0 {
 				return skipDuplicateLinks(links, channelID, interactive)
 			}
