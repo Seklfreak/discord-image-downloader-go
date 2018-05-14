@@ -1,7 +1,7 @@
 language: go
 go:
-  - 1.9.x
-  - 1.10.x
+  - 1.9
+  - 1.10
 install:
     - go get -u github.com/golang/dep/cmd/dep
     - dep ensure
@@ -22,4 +22,4 @@ deploy:
   on:
     repo: Seklfreak/discord-image-downloader-go
     tags: true
-    go: 1.10.x
+    go: 1.10
