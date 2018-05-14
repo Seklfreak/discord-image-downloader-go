@@ -22,4 +22,4 @@ deploy:
   on:
     repo: Seklfreak/discord-image-downloader-go
     tags: true
-    go: tip
+    go: 1.10.x
