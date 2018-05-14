@@ -667,10 +667,8 @@ func handleDiscordMessage(m *discordgo.Message) {
 					historyCommandActive[m.ChannelID] = ""
 
 					idArray := strings.Split(message, ",")
-					for index, channelValue := range idArray {
+					for _, channelValue := range idArray {
 						channelValue = strings.TrimSpace(channelValue)
-						fmt.Sprintf(channelValue, index)
-						//dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf(chanelValue,index))
 						if folder, ok := ChannelWhitelist[channelValue]; ok {
 							dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("downloading to `%s`", folder))
 							historyCommandActive[m.ChannelID] = "downloading"
