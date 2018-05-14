@@ -15,7 +15,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
+
+	"os/signal"
 
 	"github.com/HouzuoGuo/tiedot/db"
 	"github.com/Jeffail/gabs"
@@ -309,7 +312,9 @@ func main() {
 	updateDiscordStatus()
 
 	// keep program running until CTRL-C is pressed.
-	<-make(chan struct{})
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	<-sc
 	myDB.Close()
 	return
 }
