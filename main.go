@@ -24,6 +24,7 @@ import (
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
 	"github.com/hashicorp/go-version"
+	"github.com/mvdan/xurls"
 	"golang.org/x/net/context"
 	"golang.org/x/net/html"
 	"golang.org/x/oauth2/google"
@@ -69,26 +70,26 @@ var (
 )
 
 const (
-	VERSION                          string = "1.27.1"
-	DATABASE_DIR                     string = "database"
-	RELEASE_URL                      string = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
-	RELEASE_API_URL                  string = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
-	IMGUR_CLIENT_ID                  string = "a39473314df3f59"
-	REGEXP_URL_TWITTER               string = `^http(s?):\/\/pbs(-[0-9]+)?\.twimg\.com\/media\/[^\./]+\.(jpg|png)((\:[a-z]+)?)$`
-	REGEXP_URL_TWITTER_STATUS        string = `^http(s?):\/\/(www\.)?twitter\.com\/([A-Za-z0-9-_\.]+\/status\/|statuses\/)([0-9]+)$`
-	REGEXP_URL_TISTORY               string = `^http(s?):\/\/[a-z0-9]+\.uf\.tistory\.com\/(image|original)\/[A-Z0-9]+$`
-	REGEXP_URL_TISTORY_WITH_CDN      string = `^http(s)?:\/\/[0-9a-z]+.daumcdn.net\/[a-z]+\/[a-zA-Z0-9\.]+\/\?scode=mtistory&fname=http(s?)%3A%2F%2F[a-z0-9]+\.uf\.tistory\.com%2F(image|original)%2F[A-Z0-9]+$`
-	REGEXP_URL_GFYCAT                string = `^http(s?):\/\/gfycat\.com\/(gifs\/detail\/)?[A-Za-z]+$`
-	REGEXP_URL_INSTAGRAM             string = `^http(s?):\/\/(www\.)?instagram\.com\/p\/[^/]+\/(\?[^/]+)?$`
-	REGEXP_URL_IMGUR_SINGLE          string = `^http(s?):\/\/(i\.)?imgur\.com\/[A-Za-z0-9]+(\.gifv)?$`
-	REGEXP_URL_IMGUR_ALBUM           string = `^http(s?):\/\/imgur\.com\/(a\/|gallery\/|r\/[^\/]+\/)[A-Za-z0-9]+(#[A-Za-z0-9]+)?$`
-	REGEXP_URL_GOOGLEDRIVE           string = `^http(s?):\/\/drive\.google\.com\/file\/d\/[^/]+\/view$`
-	REGEXP_URL_GOOGLEDRIVE_FOLDER    string = `^http(s?):\/\/drive\.google\.com\/(drive\/folders\/|open\?id=)([^/]+)$`
-	REGEXP_URL_POSSIBLE_TISTORY_SITE string = `^http(s)?:\/\/[0-9a-zA-Z\.-]+\/(m\/)?(photo\/)?[0-9]+$`
-	REGEXP_URL_FLICKR_PHOTO          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/([0-9]+)(\/)?(\/in\/album-([0-9]+)(\/)?)?$`
-	REGEXP_URL_FLICKR_ALBUM          string = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/(([0-9]+)@([A-Z0-9]+)|[A-Za-z0-9]+)\/(albums\/(with\/)?|(sets\/)?)([0-9]+)(\/)?$`
-	REGEXP_URL_FLICKR_ALBUM_SHORT    string = `^http(s)?:\/\/((www\.)?flickr\.com\/gp\/[0-9]+@[A-Z0-9]+\/[A-Za-z0-9]+|flic\.kr\/s\/[a-zA-Z0-9]+)$`
-	REGEXP_URL_STREAMABLE            string = `^http(s?):\/\/(www\.)?streamable\.com\/([0-9a-z]+)$`
+	VERSION                          = "1.28"
+	DATABASE_DIR                     = "database"
+	RELEASE_URL                      = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
+	RELEASE_API_URL                  = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
+	IMGUR_CLIENT_ID                  = "a39473314df3f59"
+	REGEXP_URL_TWITTER               = `^http(s?):\/\/pbs(-[0-9]+)?\.twimg\.com\/media\/[^\./]+\.(jpg|png)((\:[a-z]+)?)$`
+	REGEXP_URL_TWITTER_STATUS        = `^http(s?):\/\/(www\.)?twitter\.com\/([A-Za-z0-9-_\.]+\/status\/|statuses\/|i\/web\/status\/)([0-9]+)$`
+	REGEXP_URL_TISTORY               = `^http(s?):\/\/[a-z0-9]+\.uf\.tistory\.com\/(image|original)\/[A-Z0-9]+$`
+	REGEXP_URL_TISTORY_WITH_CDN      = `^http(s)?:\/\/[0-9a-z]+.daumcdn.net\/[a-z]+\/[a-zA-Z0-9\.]+\/\?scode=mtistory&fname=http(s?)%3A%2F%2F[a-z0-9]+\.uf\.tistory\.com%2F(image|original)%2F[A-Z0-9]+$`
+	REGEXP_URL_GFYCAT                = `^http(s?):\/\/gfycat\.com\/(gifs\/detail\/)?[A-Za-z]+$`
+	REGEXP_URL_INSTAGRAM             = `^http(s?):\/\/(www\.)?instagram\.com\/p\/[^/]+\/(\?[^/]+)?$`
+	REGEXP_URL_IMGUR_SINGLE          = `^http(s?):\/\/(i\.)?imgur\.com\/[A-Za-z0-9]+(\.gifv)?$`
+	REGEXP_URL_IMGUR_ALBUM           = `^http(s?):\/\/imgur\.com\/(a\/|gallery\/|r\/[^\/]+\/)[A-Za-z0-9]+(#[A-Za-z0-9]+)?$`
+	REGEXP_URL_GOOGLEDRIVE           = `^http(s?):\/\/drive\.google\.com\/file\/d\/[^/]+\/view$`
+	REGEXP_URL_GOOGLEDRIVE_FOLDER    = `^http(s?):\/\/drive\.google\.com\/(drive\/folders\/|open\?id=)([^/]+)$`
+	REGEXP_URL_POSSIBLE_TISTORY_SITE = `^http(s)?:\/\/[0-9a-zA-Z\.-]+\/(m\/)?(photo\/)?[0-9]+$`
+	REGEXP_URL_FLICKR_PHOTO          = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/([0-9]+)@([A-Z0-9]+)\/([0-9]+)(\/)?(\/in\/album-([0-9]+)(\/)?)?$`
+	REGEXP_URL_FLICKR_ALBUM          = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/(([0-9]+)@([A-Z0-9]+)|[A-Za-z0-9]+)\/(albums\/(with\/)?|(sets\/)?)([0-9]+)(\/)?$`
+	REGEXP_URL_FLICKR_ALBUM_SHORT    = `^http(s)?:\/\/((www\.)?flickr\.com\/gp\/[0-9]+@[A-Z0-9]+\/[A-Za-z0-9]+|flic\.kr\/s\/[a-zA-Z0-9]+)$`
+	REGEXP_URL_STREAMABLE            = `^http(s?):\/\/(www\.)?streamable\.com\/([0-9a-z]+)$`
 )
 
 type GfycatObject struct {
@@ -323,118 +324,118 @@ func messageUpdate(s *discordgo.Session, m *discordgo.MessageUpdate) {
 	}
 }
 
-func getDownloadLinks(url string, channelID string, interactive bool) map[string]string {
-	if RegexpUrlTwitter.MatchString(url) {
-		links, err := getTwitterUrls(url)
+func getDownloadLinks(inputURL string, channelID string, interactive bool) map[string]string {
+	if RegexpUrlTwitter.MatchString(inputURL) {
+		links, err := getTwitterUrls(inputURL)
 		if err != nil {
-			fmt.Println("twitter url failed,", url, ",", err)
+			fmt.Println("twitter URL failed,", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlTwitterStatus.MatchString(url) {
-		links, err := getTwitterStatusUrls(url, channelID)
+	if RegexpUrlTwitterStatus.MatchString(inputURL) {
+		links, err := getTwitterStatusUrls(inputURL, channelID)
 		if err != nil {
-			fmt.Println("twitter status url failed,", url, ",", err)
+			fmt.Println("twitter status URL failed,", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlTistory.MatchString(url) {
-		links, err := getTistoryUrls(url)
+	if RegexpUrlTistory.MatchString(inputURL) {
+		links, err := getTistoryUrls(inputURL)
 		if err != nil {
-			fmt.Println("tistory url failed,", url, ",", err)
+			fmt.Println("tistory URL failed,", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlGfycat.MatchString(url) {
-		links, err := getGfycatUrls(url)
+	if RegexpUrlGfycat.MatchString(inputURL) {
+		links, err := getGfycatUrls(inputURL)
 		if err != nil {
-			fmt.Println("gfycat url failed,", url, ",", err)
+			fmt.Println("gfycat URL failed,", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlInstagram.MatchString(url) {
-		links, err := getInstagramUrls(url)
+	if RegexpUrlInstagram.MatchString(inputURL) {
+		links, err := getInstagramUrls(inputURL)
 		if err != nil {
-			fmt.Println("instagram url failed,", url, ",", err)
+			fmt.Println("instagram URL failed,", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlImgurSingle.MatchString(url) {
-		links, err := getImgurSingleUrls(url)
+	if RegexpUrlImgurSingle.MatchString(inputURL) {
+		links, err := getImgurSingleUrls(inputURL)
 		if err != nil {
-			fmt.Println("imgur single url failed, ", url, ",", err)
+			fmt.Println("imgur single URL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlImgurAlbum.MatchString(url) {
-		links, err := getImgurAlbumUrls(url)
+	if RegexpUrlImgurAlbum.MatchString(inputURL) {
+		links, err := getImgurAlbumUrls(inputURL)
 		if err != nil {
-			fmt.Println("imgur album url failed, ", url, ",", err)
+			fmt.Println("imgur album URL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlGoogleDrive.MatchString(url) {
-		links, err := getGoogleDriveUrls(url)
+	if RegexpUrlGoogleDrive.MatchString(inputURL) {
+		links, err := getGoogleDriveUrls(inputURL)
 		if err != nil {
-			fmt.Println("google drive album url failed, ", url, ",", err)
+			fmt.Println("google drive album URL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlFlickrPhoto.MatchString(url) {
-		links, err := getFlickrPhotoUrls(url)
+	if RegexpUrlFlickrPhoto.MatchString(inputURL) {
+		links, err := getFlickrPhotoUrls(inputURL)
 		if err != nil {
-			fmt.Println("flickr photo url failed, ", url, ",", err)
+			fmt.Println("flickr photo URL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlFlickrAlbum.MatchString(url) {
-		links, err := getFlickrAlbumUrls(url)
+	if RegexpUrlFlickrAlbum.MatchString(inputURL) {
+		links, err := getFlickrAlbumUrls(inputURL)
 		if err != nil {
-			fmt.Println("flickr album url failed, ", url, ",", err)
+			fmt.Println("flickr album URL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlFlickrAlbumShort.MatchString(url) {
-		links, err := getFlickrAlbumShortUrls(url)
+	if RegexpUrlFlickrAlbumShort.MatchString(inputURL) {
+		links, err := getFlickrAlbumShortUrls(inputURL)
 		if err != nil {
-			fmt.Println("flickr album short url failed, ", url, ",", err)
+			fmt.Println("flickr album short URL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
-	if RegexpUrlStreamable.MatchString(url) {
-		links, err := getStreamableUrls(url)
+	if RegexpUrlStreamable.MatchString(inputURL) {
+		links, err := getStreamableUrls(inputURL)
 		if err != nil {
-			fmt.Println("streamable url failed, ", url, ",", err)
+			fmt.Println("streamable URL failed, ", inputURL, ",", err)
 		} else if len(links) > 0 {
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
 	if DownloadTistorySites {
-		if RegexpUrlPossibleTistorySite.MatchString(url) {
-			links, err := getPossibleTistorySiteUrls(url)
+		if RegexpUrlPossibleTistorySite.MatchString(inputURL) {
+			links, err := getPossibleTistorySiteUrls(inputURL)
 			if err != nil {
-				fmt.Println("checking for tistory site failed, ", url, ",", err)
+				fmt.Println("checking for tistory site failed, ", inputURL, ",", err)
 			} else if len(links) > 0 {
 				return skipDuplicateLinks(links, channelID, interactive)
 			}
 		}
 	}
-	if RegexpUrlGoogleDriveFolder.MatchString(url) {
+	if RegexpUrlGoogleDriveFolder.MatchString(inputURL) {
 		if interactive {
-			links, err := getGoogleDriveFolderUrls(url)
+			links, err := getGoogleDriveFolderUrls(inputURL)
 			if err != nil {
-				fmt.Println("google drive folder url failed, ", url, ",", err)
+				fmt.Println("google drive folder URL failed, ", inputURL, ",", err)
 			} else if len(links) > 0 {
 				return skipDuplicateLinks(links, channelID, interactive)
 			}
@@ -442,7 +443,18 @@ func getDownloadLinks(url string, channelID string, interactive bool) map[string
 			fmt.Println("google drive folder only accepted in interactive channels")
 		}
 	}
-	return map[string]string{url: ""}
+
+	// try without queries
+	parsedURL, err := url.Parse(inputURL)
+	if err == nil {
+		parsedURL.RawQuery = ""
+		inputURLWithoutQueries := parsedURL.String()
+		if inputURLWithoutQueries != inputURL {
+			return getDownloadLinks(inputURLWithoutQueries, channelID, interactive)
+		}
+	}
+
+	return map[string]string{inputURL: ""}
 }
 
 func skipDuplicateLinks(linkList map[string]string, channelID string, interactive bool) map[string]string {
@@ -483,6 +495,13 @@ func handleDiscordMessage(m *discordgo.Message) {
 		for _, iAttachment := range m.Attachments {
 			startDownload(iAttachment.URL, iAttachment.Filename, folderName, m.ChannelID, m.Author.ID, fileTime)
 		}
+		foundUrls := xurls.Strict.FindAllString(m.Content, -1)
+		for _, iFoundUrl := range foundUrls {
+			links := getDownloadLinks(iFoundUrl, m.ChannelID, false)
+			for link, filename := range links {
+				startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
+			}
+		}
 		if m.Embeds != nil && len(m.Embeds) > 0 {
 			for _, embed := range m.Embeds {
 				if embed.Provider != nil {
@@ -493,6 +512,15 @@ func handleDiscordMessage(m *discordgo.Message) {
 					links := getDownloadLinks(embed.URL, m.ChannelID, false)
 					for link, filename := range links {
 						startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
+					}
+				}
+				if embed.Description != "" {
+					foundUrls := xurls.Strict.FindAllString(embed.Description, -1)
+					for _, iFoundUrl := range foundUrls {
+						links := getDownloadLinks(iFoundUrl, m.ChannelID, false)
+						for link, filename := range links {
+							startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
+						}
 					}
 				}
 				if embed.Image != nil && embed.Image.URL != "" {
@@ -517,7 +545,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 			switch {
 			case message == "help":
 				dg.ChannelMessageSend(m.ChannelID,
-					"**<link>** to download a link\n**version** to find out the version\n**stats** to view stats\n**channels** to list active channels\n**help** to open this help\n ")
+					"**<link>** to download a link\n**version** to find out the version\n**stats** to view stats\n**channels** to list active channels\n**history** to download a full channel history\n**help** to open this help\n ")
 			case message == "version":
 				dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("discord-image-downloder-go **v%s**", VERSION))
 				dg.ChannelTyping(m.ChannelID)
@@ -637,15 +665,13 @@ func handleDiscordMessage(m *discordgo.Message) {
 				_, historyCommandIsSet := historyCommandActive[m.ChannelID]
 				if !historyCommandIsSet || historyCommandActive[m.ChannelID] == "" {
 					historyCommandActive[m.ChannelID] = ""
-					
-					//dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf(message))
-					//dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf(array[x]))
-					
-					idArray := strings.Split(message, ", ")
-					for index, chanelValue := range idArray {
-						fmt.Sprintf(chanelValue,index)
+
+					idArray := strings.Split(message, ",")
+					for index, channelValue := range idArray {
+						channelValue = strings.TrimSpace(channelValue)
+						fmt.Sprintf(channelValue, index)
 						//dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf(chanelValue,index))
-						if folder, ok := ChannelWhitelist[chanelValue]; ok {
+						if folder, ok := ChannelWhitelist[channelValue]; ok {
 							dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("downloading to `%s`", folder))
 							historyCommandActive[m.ChannelID] = "downloading"
 							lastBefore := ""
@@ -656,7 +682,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 									fmt.Printf("[%s] Requesting 100 more messages, (before %s)\n", time.Now().Format(time.Stamp), lastBeforeTime)
 									dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Requesting 100 more messages, (before %s)\n", lastBeforeTime))
 								}
-								messages, err := dg.ChannelMessages(chanelValue, 100, lastBefore, "", "")
+								messages, err := dg.ChannelMessages(channelValue, 100, lastBefore, "", "")
 								if err == nil {
 									if len(messages) <= 0 {
 										delete(historyCommandActive, m.ChannelID)
@@ -695,7 +721,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 							}
 							dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("done, %d download links started!", i))
 						} else {
-							dg.ChannelMessageSend(m.ChannelID, "please send me a channel id (from the whitelist)")
+							dg.ChannelMessageSend(m.ChannelID, "Please tell me one or multiple Channel IDs (separated by commas)\nPlease make sure the channels have been whitelisted before submitting.")
 						}
 					}
 				} else if historyCommandActive[m.ChannelID] == "downloading" && message == "cancel" {
@@ -734,6 +760,23 @@ func handleDiscordMessage(m *discordgo.Message) {
 						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> finished", link))
 					} else {
 						dg.ChannelMessageSend(m.ChannelID, "invalid path")
+					}
+				} else {
+					_ = folderName
+					foundLinks := false
+					for _, iAttachment := range m.Attachments {
+						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path or **cancel** to cancel the download %s", iAttachment.URL, folderName))
+						interactiveChannelLinkTemp[m.ChannelID] = iAttachment.URL
+						foundLinks = true
+					}
+					foundUrls := xurls.Strict.FindAllString(m.Content, -1)
+					for _, iFoundUrl := range foundUrls {
+						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path or **cancel** to cancel the download %s", iFoundUrl, folderName))
+						interactiveChannelLinkTemp[m.ChannelID] = iFoundUrl
+						foundLinks = true
+					}
+					if foundLinks == false {
+						dg.ChannelMessageSend(m.ChannelID, "unable to find valid link")
 					}
 				}
 			}
@@ -889,7 +932,7 @@ func getInstagramUrls(url string) (map[string]string, error) {
 	// if instagram album
 	albumUrls := getInstagramAlbumUrls(url)
 	if len(albumUrls) > 0 {
-		fmt.Println("is instagram album")
+		//fmt.Println("is instagram album")
 		links := make(map[string]string)
 		for i, albumUrl := range albumUrls {
 			links[albumUrl] = filename + " " + strconv.Itoa(i+1) + filepath.Ext(albumUrl)
@@ -1190,6 +1233,7 @@ func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
 		return nil, err
 	}
 	request.Header.Add("Accept-Encoding", "identity")
+	request.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36")
 	respHead, err := client.Do(request)
 	if err != nil {
 		return nil, err
@@ -1210,6 +1254,7 @@ func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
 		return nil, err
 	}
 	request.Header.Add("Accept-Encoding", "identity")
+	request.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36")
 	resp, err := client.Do(request)
 	if err != nil {
 		return nil, err
@@ -1224,7 +1269,7 @@ func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
 
 	doc.Find(".article img, #content img, div[role=main] img, .section_blogview img").Each(func(i int, s *goquery.Selection) {
 		foundUrl, exists := s.Attr("src")
-		if exists == true {
+		if exists {
 			isTistoryCdnUrl := RegexpUrlTistoryWithCDN.MatchString(foundUrl)
 			isTistoryUrl := RegexpUrlTistory.MatchString(foundUrl)
 			if isTistoryCdnUrl == true {
