@@ -1,4 +1,3 @@
-
 # Gopkg.toml example
 #
 # Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
@@ -17,8 +16,13 @@
 #   source = "github.com/myfork/project2"
 #
 # [[override]]
-#  name = "github.com/x/y"
-#  version = "2.4.0"
+#   name = "github.com/x/y"
+#   version = "2.4.0"
+#
+# [prune]
+#   non-go = false
+#   go-tests = true
+#   unused-packages = true
 
 
 [[constraint]]
@@ -27,15 +31,15 @@
 
 [[constraint]]
   name = "github.com/Jeffail/gabs"
-  version = "1.0.0"
-
-[[constraint]]
-  name = "github.com/PuerkitoBio/goquery"
   version = "1.1.0"
 
 [[constraint]]
+  name = "github.com/PuerkitoBio/goquery"
+  version = "1.4.0"
+
+[[constraint]]
   name = "github.com/bwmarrin/discordgo"
-  branch = "develop"
+  version = "0.18.0"
 
 [[constraint]]
   branch = "master"
@@ -48,10 +52,6 @@
 [[constraint]]
   branch = "master"
   name = "github.com/hashicorp/go-version"
-
-[[constraint]]
-  name = "github.com/mvdan/xurls"
-  version = "1.1.0"
 
 [[constraint]]
   branch = "master"
@@ -67,4 +67,12 @@
 
 [[constraint]]
   name = "gopkg.in/ini.v1"
-  version = "1.28.2"
+  version = "1.36.0"
+
+[[constraint]]
+  name = "mvdan.cc/xurls"
+  version = "1.1.0"
+
+[prune]
+  go-tests = true
+  unused-packages = true

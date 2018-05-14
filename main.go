@@ -27,13 +27,13 @@ import (
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
 	"github.com/hashicorp/go-version"
-	"github.com/mvdan/xurls"
 	"golang.org/x/net/context"
 	"golang.org/x/net/html"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/googleapi"
 	"gopkg.in/ini.v1"
+	"mvdan.cc/xurls"
 )
 
 var (
