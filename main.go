@@ -545,7 +545,7 @@ func handleDiscordMessage(m *discordgo.Message) {
 			switch {
 			case message == "help":
 				dg.ChannelMessageSend(m.ChannelID,
-					"**<link>** to download a link\n**version** to find out the version\n**stats** to view stats\n**channels** to list active channels\n**help** to open this help\n ")
+					"**<link>** to download a link\n**version** to find out the version\n**stats** to view stats\n**channels** to list active channels\n**history** to download a full channel history\n**help** to open this help\n ")
 			case message == "version":
 				dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("discord-image-downloder-go **v%s**", VERSION))
 				dg.ChannelTyping(m.ChannelID)
@@ -665,67 +665,62 @@ func handleDiscordMessage(m *discordgo.Message) {
 				_, historyCommandIsSet := historyCommandActive[m.ChannelID]
 				if !historyCommandIsSet || historyCommandActive[m.ChannelID] == "" {
 					historyCommandActive[m.ChannelID] = ""
-					if folder, ok := ChannelWhitelist[m.Content]; ok {
-						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("downloading to `%s`", folder))
-						historyCommandActive[m.ChannelID] = "downloading"
-						lastBefore := ""
-						var lastBeforeTime time.Time
-					MessageRequestingLoop:
-						for true {
-							if lastBeforeTime != (time.Time{}) {
-								fmt.Printf("[%s] Requesting 100 more messages, (before %s)\n", time.Now().Format(time.Stamp), lastBeforeTime)
-								dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Requesting 100 more messages, (before %s)\n", lastBeforeTime))
-							}
-							messages, err := dg.ChannelMessages(m.Content, 100, lastBefore, "", "")
-							if err == nil {
-								if len(messages) <= 0 {
-									delete(historyCommandActive, m.ChannelID)
-									break MessageRequestingLoop
+
+					idArray := strings.Split(message, ",")
+					for _, channelValue := range idArray {
+						channelValue = strings.TrimSpace(channelValue)
+						if folder, ok := ChannelWhitelist[channelValue]; ok {
+							dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("downloading to `%s`", folder))
+							historyCommandActive[m.ChannelID] = "downloading"
+							lastBefore := ""
+							var lastBeforeTime time.Time
+						MessageRequestingLoop:
+							for true {
+								if lastBeforeTime != (time.Time{}) {
+									fmt.Printf("[%s] Requesting 100 more messages, (before %s)\n", time.Now().Format(time.Stamp), lastBeforeTime)
+									dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Requesting 100 more messages, (before %s)\n", lastBeforeTime))
 								}
-								lastBefore = messages[len(messages)-1].ID
-								lastBeforeTime, err = messages[len(messages)-1].Timestamp.Parse()
-								if err != nil {
-									fmt.Println(err)
-								}
-								for _, message := range messages {
-									fileTime := time.Now()
-									if m.Timestamp != "" {
-										fileTime, err = message.Timestamp.Parse()
-										if err != nil {
-											fmt.Println(err)
-										}
-									}
-									if historyCommandActive[m.ChannelID] == "cancel" {
+								messages, err := dg.ChannelMessages(channelValue, 100, lastBefore, "", "")
+								if err == nil {
+									if len(messages) <= 0 {
 										delete(historyCommandActive, m.ChannelID)
 										break MessageRequestingLoop
 									}
-									for _, iAttachment := range message.Attachments {
-										if len(findDownloadedImageByUrl(iAttachment.URL)) == 0 {
-											i++
-											startDownload(iAttachment.URL, iAttachment.Filename, folder, message.ChannelID, message.Author.ID, fileTime)
-										}
+									lastBefore = messages[len(messages)-1].ID
+									lastBeforeTime, err = messages[len(messages)-1].Timestamp.Parse()
+									if err != nil {
+										fmt.Println(err)
 									}
-									foundUrls := xurls.Strict.FindAllString(message.Content, -1)
-									for _, iFoundUrl := range foundUrls {
-										links := getDownloadLinks(iFoundUrl, message.ChannelID, false)
-										for link, filename := range links {
-											if len(findDownloadedImageByUrl(link)) == 0 {
+									for _, message := range messages {
+										fileTime := time.Now()
+										if m.Timestamp != "" {
+											fileTime, err = message.Timestamp.Parse()
+											if err != nil {
+												fmt.Println(err)
+											}
+										}
+										if historyCommandActive[m.ChannelID] == "cancel" {
+											delete(historyCommandActive, m.ChannelID)
+											break MessageRequestingLoop
+										}
+										for _, iAttachment := range message.Attachments {
+											if len(findDownloadedImageByUrl(iAttachment.URL)) == 0 {
 												i++
-												startDownload(link, filename, folder, message.ChannelID, message.Author.ID, fileTime)
+												startDownload(iAttachment.URL, iAttachment.Filename, folder, message.ChannelID, message.Author.ID, fileTime)
 											}
 										}
 									}
+								} else {
+									dg.ChannelMessageSend(m.ChannelID, err.Error())
+									fmt.Println(err)
+									delete(historyCommandActive, m.ChannelID)
+									break MessageRequestingLoop
 								}
-							} else {
-								dg.ChannelMessageSend(m.ChannelID, err.Error())
-								fmt.Println(err)
-								delete(historyCommandActive, m.ChannelID)
-								break MessageRequestingLoop
 							}
+							dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("done, %d download links started!", i))
+						} else {
+							dg.ChannelMessageSend(m.ChannelID, "Please tell me one or multiple Channel IDs (separated by commas)\nPlease make sure the channels have been whitelisted before submitting.")
 						}
-						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("done, %d download links started!", i))
-					} else {
-						dg.ChannelMessageSend(m.ChannelID, "please send me a channel id (from the whitelist)")
 					}
 				} else if historyCommandActive[m.ChannelID] == "downloading" && message == "cancel" {
 					historyCommandActive[m.ChannelID] = "cancel"
