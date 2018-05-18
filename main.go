@@ -70,6 +70,7 @@ var (
 	SendNoticesToInteractiveChannels bool
 	clientCredentialsJson            string
 	DriveService                     *drive.Service
+	SendNoticesAboutNoImgOrVid       bool
 )
 
 const (
@@ -128,6 +129,7 @@ func main() {
 		cfg.Section("general").NewKey("max download retries", "5")
 		cfg.Section("general").NewKey("download timeout", "60")
 		cfg.Section("general").NewKey("send notices to interactive channels", "false")
+		cfg.Section("general").NewKey("send notices about inability to find image or video","false")
 		cfg.Section("channels").NewKey("channelid1", "C:\\full\\path\\1")
 		cfg.Section("channels").NewKey("channelid2", "C:\\full\\path\\2")
 		cfg.Section("channels").NewKey("channelid3", "C:\\full\\path\\3")
@@ -272,7 +274,8 @@ func main() {
 	MaxDownloadRetries = cfg.Section("general").Key("max download retries").MustInt(3)
 	DownloadTimeout = cfg.Section("general").Key("download timeout").MustInt(60)
 	SendNoticesToInteractiveChannels = cfg.Section("general").Key("send notices to interactive channels").MustBool(false)
-
+	SendNoticesAboutNoImgOrVid = cfg.Section("general").Key("send notices about inability to find image or video").MustBool(false) 
+	
 	// setup google drive client
 	clientCredentialsJson = cfg.Section("google").Key("client credentials json").MustString("")
 	if clientCredentialsJson != "" {
@@ -1522,6 +1525,15 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 	contentTypeParts := strings.Split(contentType, "/")
 	if contentTypeParts[0] != "image" && contentTypeParts[0] != "video" {
 		fmt.Println("No image or video found at", dUrl)
+		if SendNoticesAboutNoImgOrVid == true && SendNoticesToInteractiveChannels == true {
+			for channelId := range InteractiveChannelWhitelist {
+				content := fmt.Sprintf("No image or video found at %s\n", dUrl)
+				_, err := dg.ChannelMessageSend(channelId, content)
+				if err != nil {
+					fmt.Println("Failed to send notice to", channelId, "-", err)
+				}
+			}
+		}	
 		return true
 	}
 
