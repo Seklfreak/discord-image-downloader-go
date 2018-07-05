@@ -70,6 +70,7 @@ var (
 	SendNoticesToInteractiveChannels bool
 	clientCredentialsJson            string
 	DriveService                     *drive.Service
+	RegexpFilename                   *regexp.Regexp
 )
 
 const (
@@ -93,6 +94,8 @@ const (
 	REGEXP_URL_FLICKR_ALBUM          = `^http(s)?:\/\/(www\.)?flickr\.com\/photos\/(([0-9]+)@([A-Z0-9]+)|[A-Za-z0-9]+)\/(albums\/(with\/)?|(sets\/)?)([0-9]+)(\/)?$`
 	REGEXP_URL_FLICKR_ALBUM_SHORT    = `^http(s)?:\/\/((www\.)?flickr\.com\/gp\/[0-9]+@[A-Z0-9]+\/[A-Za-z0-9]+|flic\.kr\/s\/[a-zA-Z0-9]+)$`
 	REGEXP_URL_STREAMABLE            = `^http(s?):\/\/(www\.)?streamable\.com\/([0-9a-z]+)$`
+
+	REGEXP_FILENAME = `^^[^/\\:*?"<>|]{1,150}\.[A-Za-z0-9]{2,4}$$`
 )
 
 type GfycatObject struct {
@@ -243,6 +246,11 @@ func main() {
 		return
 	}
 	RegexpUrlFlickrAlbumShort, err = regexp.Compile(REGEXP_URL_FLICKR_ALBUM_SHORT)
+	if err != nil {
+		fmt.Println("Regexp error", err)
+		return
+	}
+	RegexpFilename, err = regexp.Compile(REGEXP_FILENAME)
 	if err != nil {
 		fmt.Println("Regexp error", err)
 		return
@@ -1498,6 +1506,23 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 		}
 	}
 
+	bodyOfResp, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		fmt.Println("Could not read response", dUrl, "-", err)
+		return false
+	}
+
+	contentType := http.DetectContentType(bodyOfResp)
+
+	// check for valid filename, if not, replace with generic filename
+	if !RegexpFilename.MatchString(filename) {
+		filename = time.Now().Format("2006-01-02 15-04-05")
+		possibleExtension, _ := mime.ExtensionsByType(contentType)
+		if len(possibleExtension) > 0 {
+			filename += possibleExtension[0]
+		}
+	}
+
 	completePath := path + string(os.PathSeparator) + filename
 	if _, err := os.Stat(completePath); err == nil {
 		tmpPath := completePath
@@ -1513,12 +1538,6 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 		fmt.Printf("[%s] Saving possible duplicate (filenames match): %s to %s\n", time.Now().Format(time.Stamp), tmpPath, completePath)
 	}
 
-	bodyOfResp, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		fmt.Println("Could not read response", dUrl, "-", err)
-		return false
-	}
-	contentType := http.DetectContentType(bodyOfResp)
 	contentTypeParts := strings.Split(contentType, "/")
 	if contentTypeParts[0] != "image" && contentTypeParts[0] != "video" {
 		fmt.Println("No image or video found at", dUrl)
