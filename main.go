@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -938,7 +937,7 @@ func getInstagramUrls(url string) (map[string]string, error) {
 	// if instagram video
 	videoUrl := getInstagramVideoUrl(url)
 	if videoUrl != "" {
-		return map[string]string{videoUrl: filename + filepath.Ext(videoUrl)}, nil
+		return map[string]string{videoUrl: filename + filepathExtension(videoUrl)}, nil
 	}
 	// if instagram album
 	albumUrls := getInstagramAlbumUrls(url)
@@ -946,7 +945,7 @@ func getInstagramUrls(url string) (map[string]string, error) {
 		//fmt.Println("is instagram album")
 		links := make(map[string]string)
 		for i, albumUrl := range albumUrls {
-			links[albumUrl] = filename + " " + strconv.Itoa(i+1) + filepath.Ext(albumUrl)
+			links[albumUrl] = filename + " " + strconv.Itoa(i+1) + filepathExtension(albumUrl)
 		}
 		return links, nil
 	}
@@ -1528,8 +1527,8 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 		tmpPath := completePath
 		i := 1
 		for {
-			completePath = tmpPath[0:len(tmpPath)-len(filepath.Ext(tmpPath))] +
-				"-" + strconv.Itoa(i) + filepath.Ext(tmpPath)
+			completePath = tmpPath[0:len(tmpPath)-len(filepathExtension(tmpPath))] +
+				"-" + strconv.Itoa(i) + filepathExtension(tmpPath)
 			if _, err := os.Stat(completePath); os.IsNotExist(err) {
 				break
 			}
@@ -1691,4 +1690,12 @@ func Pagify(text string, delimiter string) []string {
 		result = append(result, currentOutputPart)
 	}
 	return result
+}
+
+func filepathExtension(filepath string) string {
+	filepath = path.Ext(filepath)
+	if strings.Contains(filepath, "?") {
+		filepath = strings.Split(filepath, "?")[0]
+	}
+	return filepath
 }
