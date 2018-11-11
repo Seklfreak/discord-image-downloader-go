@@ -35,3 +35,5 @@ database*/
 .idea/
 
 vendor
+credentials.json
+.DS_Store
