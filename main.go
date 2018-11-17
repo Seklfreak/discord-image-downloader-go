@@ -19,12 +19,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ChimeraCoder/anaconda"
 	"github.com/HouzuoGuo/tiedot/db"
 	"github.com/Jeffail/gabs"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/bwmarrin/discordgo"
-	"github.com/dghubble/go-twitter/twitter"
-	"github.com/dghubble/oauth1"
 	"github.com/hashicorp/go-version"
 	"golang.org/x/net/context"
 	"golang.org/x/net/html"
@@ -61,10 +60,7 @@ var (
 	historyCommandActive             map[string]string
 	MaxDownloadRetries               int
 	flickrApiKey                     string
-	twitterConsumerKey               string
-	twitterConsumerSecret            string
-	twitterAccessToken               string
-	twitterAccessTokenSecret         string
+	twitterClient                    *anaconda.TwitterApi
 	DownloadTimeout                  int
 	SendNoticesToInteractiveChannels bool
 	clientCredentialsJson            string
@@ -155,10 +151,21 @@ func main() {
 	interactiveChannelLinkTemp = make(map[string]string)
 	historyCommandActive = make(map[string]string)
 	flickrApiKey = cfg.Section("flickr").Key("api key").MustString("yourflickrapikey")
-	twitterConsumerKey = cfg.Section("twitter").Key("consumer key").MustString("your consumer key")
-	twitterConsumerSecret = cfg.Section("twitter").Key("consumer secret").MustString("your consumer secret")
-	twitterAccessToken = cfg.Section("twitter").Key("access token").MustString("your access token")
-	twitterAccessTokenSecret = cfg.Section("twitter").Key("access token secret").MustString("your access token secret")
+	twitterConsumerKey := cfg.Section("twitter").Key("consumer key").MustString("your consumer key")
+	twitterConsumerSecret := cfg.Section("twitter").Key("consumer secret").MustString("your consumer secret")
+	twitterAccessToken := cfg.Section("twitter").Key("access token").MustString("your access token")
+	twitterAccessTokenSecret := cfg.Section("twitter").Key("access token secret").MustString("your access token secret")
+	if twitterAccessToken != "" &&
+		twitterAccessTokenSecret != "" &&
+		twitterConsumerKey != "" &&
+		twitterConsumerSecret != "" {
+		twitterClient = anaconda.NewTwitterApiWithCredentials(
+			twitterAccessToken,
+			twitterAccessTokenSecret,
+			twitterConsumerKey,
+			twitterConsumerSecret,
+		)
+	}
 
 	RegexpUrlTwitter, err = regexp.Compile(REGEXP_URL_TWITTER)
 	if err != nil {
@@ -839,16 +846,9 @@ func getTwitterUrls(url string) (map[string]string, error) {
 }
 
 func getTwitterStatusUrls(url string, channelID string) (map[string]string, error) {
-	if (twitterConsumerKey == "" || twitterConsumerKey == "your consumer key") ||
-		(twitterConsumerSecret == "" || twitterConsumerSecret == "your consumer secret") ||
-		(twitterAccessToken == "" || twitterAccessToken == "your access token") ||
-		(twitterAccessTokenSecret == "" || twitterAccessTokenSecret == "your access token secret") {
+	if twitterClient == nil {
 		return nil, errors.New("invalid twitter api keys set")
 	}
-	twitterConfig := oauth1.NewConfig(twitterConsumerKey, twitterConsumerSecret)
-	twitterToken := oauth1.NewToken(twitterAccessToken, twitterAccessTokenSecret)
-	twitterHttpClient := twitterConfig.Client(oauth1.NoContext, twitterToken)
-	twitterClient := twitter.NewClient(twitterHttpClient)
 
 	matches := RegexpUrlTwitterStatus.FindStringSubmatch(url)
 	statusId, err := strconv.ParseInt(matches[4], 10, 64)
@@ -856,38 +856,34 @@ func getTwitterStatusUrls(url string, channelID string) (map[string]string, erro
 		return nil, err
 	}
 
-	tweet, _, err := twitterClient.Statuses.Show(statusId, nil)
+	tweet, err := twitterClient.GetTweet(statusId, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	links := make(map[string]string)
-	if tweet.ExtendedEntities != nil {
-		for _, tweetMedia := range tweet.ExtendedEntities.Media {
-			if len(tweetMedia.VideoInfo.Variants) > 0 {
-				var lastVideoVariant twitter.VideoVariant
-				for _, videoVariant := range tweetMedia.VideoInfo.Variants {
-					if videoVariant.Bitrate >= lastVideoVariant.Bitrate {
-						lastVideoVariant = videoVariant
-					}
-				}
-				if lastVideoVariant.URL != "" {
-					links[lastVideoVariant.URL] = ""
-				}
-			} else {
-				foundUrls := getDownloadLinks(tweetMedia.MediaURLHttps, channelID, false)
-				for foundUrlKey, foundUrlValue := range foundUrls {
-					links[foundUrlKey] = foundUrlValue
+	for _, tweetMedia := range tweet.ExtendedEntities.Media {
+		if len(tweetMedia.VideoInfo.Variants) > 0 {
+			var lastVideoVariant anaconda.Variant
+			for _, videoVariant := range tweetMedia.VideoInfo.Variants {
+				if videoVariant.Bitrate >= lastVideoVariant.Bitrate {
+					lastVideoVariant = videoVariant
 				}
 			}
-		}
-	}
-	if tweet.Entities != nil {
-		for _, tweetUrl := range tweet.Entities.Urls {
-			foundUrls := getDownloadLinks(tweetUrl.ExpandedURL, channelID, false)
+			if lastVideoVariant.Url != "" {
+				links[lastVideoVariant.Url] = ""
+			}
+		} else {
+			foundUrls := getDownloadLinks(tweetMedia.Media_url_https, channelID, false)
 			for foundUrlKey, foundUrlValue := range foundUrls {
 				links[foundUrlKey] = foundUrlValue
 			}
+		}
+	}
+	for _, tweetUrl := range tweet.Entities.Urls {
+		foundUrls := getDownloadLinks(tweetUrl.Expanded_url, channelID, false)
+		for foundUrlKey, foundUrlValue := range foundUrls {
+			links[foundUrlKey] = foundUrlValue
 		}
 	}
 

@@ -43,14 +43,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/dghubble/go-twitter"
-
-[[constraint]]
-  name = "github.com/dghubble/oauth1"
-  version = "0.4.0"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/hashicorp/go-version"
 
 [[constraint]]
@@ -72,6 +64,10 @@
 [[constraint]]
   name = "mvdan.cc/xurls"
   version = "1.1.0"
+
+[[constraint]]
+  name = "github.com/ChimeraCoder/anaconda"
+  version = "2.0.0"
 
 [prune]
   go-tests = true
