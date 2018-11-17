@@ -707,6 +707,16 @@ func handleDiscordMessage(m *discordgo.Message) {
 												startDownload(iAttachment.URL, iAttachment.Filename, folder, message.ChannelID, message.Author.ID, fileTime)
 											}
 										}
+										foundUrls := xurls.Strict.FindAllString(message.Content, -1)
+										for _, iFoundUrl := range foundUrls {
+											links := getDownloadLinks(iFoundUrl, message.ChannelID, false)
+											for link, filename := range links {
+												if len(findDownloadedImageByUrl(link)) == 0 {
+													i++
+													startDownload(link, filename, folder, message.ChannelID, message.Author.ID, fileTime)
+												}
+											}
+										}
 									}
 								} else {
 									dg.ChannelMessageSend(m.ChannelID, err.Error())
