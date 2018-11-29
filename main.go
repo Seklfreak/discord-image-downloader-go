@@ -914,7 +914,7 @@ func getGfycatUrls(url string) (map[string]string, error) {
 	} else {
 		gfycatId := parts[len(parts)-1]
 		gfycatObject := new(GfycatObject)
-		getJson("https://gfycat.com/cajax/get/"+gfycatId, gfycatObject)
+		getJson("https://api.gfycat.com/v1/gfycats/"+gfycatId, gfycatObject)
 		gfycatUrl := gfycatObject.GfyItem["mp4Url"]
 		if url == "" {
 			return nil, errors.New("failed to read response from gfycat")
