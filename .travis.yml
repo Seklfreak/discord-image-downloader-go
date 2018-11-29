@@ -4,13 +4,8 @@ go:
 install:
     - go get -u github.com/golang/dep/cmd/dep
     - dep ensure
-    - go get -v github.com/golang/lint/golint
     - go get github.com/mitchellh/gox
 script:
-    #- diff <(gofmt -d .) <(echo -n)
-    - go vet -x ./...
-    #- golint ./...
-    #- go test -v -race ./...
     - gox -output="bin/discord-image-downloader-go-{{.OS}}-{{.Arch}}" -osarch="windows/amd64 linux/amd64 linux/arm"
 deploy:
   provider: releases
@@ -18,10 +13,9 @@ deploy:
     secure: BZnS+tH7kCy2Jpzl5ctIIlQqurIlLvJVw5Pn2tkjEnQlnEQZUW7dEI/eejz1Tw1NNjuxdfJRzgkTNI7sRM6VjtuoTzq772TuxncTv4Oy/t/S3zaBthMMl/8Ug+VW2Py/A6LO8YDVpEaIIenyUTsmPG99HJd7jjW+qCh3npfjvWvf4Qe3FL0cNOH6l9ptA77Fcu1j7yXOUqCpxVtLL8sRe9qTsciUGT8eSAaHLBKbUxcw4TMn4P7G1/6b4tfkm1aQZX5cJROccdYt6FY5z1hNUUUN3e1bn1Hj/iY2zUZm1F4LHC5AcfZFUu/fAGhoLbB1B/hEZ4zrE7RLKaCR1vWCbr54/Xn+uWdDWPL6dbJ3EzCIuDtGDoHAJBfRos9HsCdfizB5A/yg0OS3RscK7Umh+gEznJyQCvAIbndAaryxKeOxVPd6tIdoW0fi0yaWmq9UHKVUt7lLd8rxlGWhGh6/GPLCME7+EAR84RyvP7e6VUHxUSnB3bly3oeJZd/QZpHmrIPqE6K9iobDJyERjNd+Bvuay8bw65NcqR9ZtAYlK7tUYxyEhw23fyybrwTB7ONUu/DDUSLQrtP7YvhtGnxMS+cU4O5GZrkuIP7urUS5KAnYbzb5I3F1Bk8PDLNFEdsGUOKq9U5ywRypmVfSxldGQHvEl4x1CO3E3zJEhkDOIaI=
   file:
     - "bin/discord-image-downloader-go-windows-amd64.exe"
-    - "bin/discord-image-downloader-go-linux-amd64.exe"
-    - "bin/discord-image-downloader-go-linux-arm.exe"
+    - "bin/discord-image-downloader-go-linux-amd64"
+    - "bin/discord-image-downloader-go-linux-arm"
   skip_cleanup: true
   on:
     repo: Seklfreak/discord-image-downloader-go
     tags: true
-    go: "1.11"
