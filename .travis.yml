@@ -2,10 +2,10 @@ language: go
 go:
   - "1.11"
 install:
-    - go mod download
+    - env GO111MODULE=on go mod download
     - go get github.com/mitchellh/gox
 script:
-    - gox -output="bin/discord-image-downloader-go-{{.OS}}-{{.Arch}}" -osarch="windows/amd64 linux/amd64 linux/arm"
+    - env GO111MODULE=on gox -output="bin/discord-image-downloader-go-{{.OS}}-{{.Arch}}" -osarch="windows/amd64 linux/amd64 linux/arm"
 deploy:
   provider: releases
   api_key:
