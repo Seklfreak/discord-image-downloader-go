@@ -69,7 +69,9 @@ var (
 )
 
 type GfycatObject struct {
-	GfyItem map[string]string
+	GfyItem struct {
+		Mp4URL string `json:"mp4Url"`
+	} `json:"gfyItem"`
 }
 
 type ImgurAlbumObject struct {
@@ -915,7 +917,7 @@ func getGfycatUrls(url string) (map[string]string, error) {
 		gfycatId := parts[len(parts)-1]
 		gfycatObject := new(GfycatObject)
 		getJson("https://api.gfycat.com/v1/gfycats/"+gfycatId, gfycatObject)
-		gfycatUrl := gfycatObject.GfyItem["mp4Url"]
+		gfycatUrl := gfycatObject.GfyItem.Mp4URL
 		if url == "" {
 			return nil, errors.New("failed to read response from gfycat")
 		}
