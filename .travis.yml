@@ -2,8 +2,7 @@ language: go
 go:
   - "1.11"
 install:
-    - go get -u github.com/golang/dep/cmd/dep
-    - dep ensure
+    - go mod download
     - go get github.com/mitchellh/gox
 script:
     - gox -output="bin/discord-image-downloader-go-{{.OS}}-{{.Arch}}" -osarch="windows/amd64 linux/amd64 linux/arm"
