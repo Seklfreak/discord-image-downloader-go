@@ -1,5 +1,7 @@
 # discord-image-downloader-go
-[<img src="https://img.shields.io/badge/Support-me!-orange.svg">](https://www.paypal.me/swk) [![Go Report Card](https://goreportcard.com/badge/github.com/Seklfreak/discord-image-downloader-go)](https://goreportcard.com/report/github.com/Seklfreak/discord-image-downloader-go) [![Build Status](https://travis-ci.org/Seklfreak/discord-image-downloader-go.svg?branch=master)](https://travis-ci.org/Seklfreak/discord-image-downloader-go)
+[<img src="https://img.shields.io/badge/Support-me!-orange.svg">](https://www.paypal.me/swk)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Seklfreak/discord-image-downloader-go)](https://goreportcard.com/report/github.com/Seklfreak/discord-image-downloader-go)
+[![Build Status](https://travis-ci.com/Seklfreak/discord-image-downloader-go.svg?branch=master)](https://travis-ci.com/Seklfreak/discord-image-downloader-go)
 
 [Download the latest release](https://github.com/Seklfreak/discord-image-downloader-go/releases/latest)
 
