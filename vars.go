@@ -1,7 +1,7 @@
 package main
 
 const (
-	VERSION                          = "1.31.4"
+	VERSION                          = "1.32"
 	DATABASE_DIR                     = "database"
 	RELEASE_URL                      = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL                  = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
@@ -25,4 +25,6 @@ const (
 	REGEXP_FILENAME = `^^[^/\\:*?"<>|]{1,150}\.[A-Za-z0-9]{2,4}$$`
 
 	DEFAULT_CONFIG_FILE = "config.ini"
+
+	discordEmojiBaseUrl = "https://cdn.discordapp.com/emojis/"
 )
