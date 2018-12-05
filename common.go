@@ -13,3 +13,20 @@ func isDiscordEmoji(link string) bool {
 
 	return false
 }
+
+// deduplicateDownloadItems removes duplicates from a slice of *DownloadItem s identified by the Link
+func deduplicateDownloadItems(DownloadItems []*DownloadItem) []*DownloadItem {
+	var result []*DownloadItem
+	seen := map[string]bool{}
+
+	for _, item := range DownloadItems {
+		if seen[item.Link] {
+			continue
+		}
+
+		seen[item.Link] = true
+		result = append(result, item)
+	}
+
+	return result
+}

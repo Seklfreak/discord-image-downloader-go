@@ -144,9 +144,9 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 		parsedURL.RawQuery = ""
 		inputURLWithoutQueries := parsedURL.String()
 		if inputURLWithoutQueries != inputURL {
-			return getDownloadLinks(inputURLWithoutQueries, channelID, interactive)
+			return skipDuplicateLinks(getDownloadLinks(inputURLWithoutQueries, channelID, interactive), channelID, interactive)
 		}
 	}
 
-	return map[string]string{inputURL: ""}
+	return skipDuplicateLinks(map[string]string{inputURL: ""}, channelID, interactive)
 }

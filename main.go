@@ -265,62 +265,46 @@ func skipDuplicateLinks(linkList map[string]string, channelID string, interactiv
 
 func handleDiscordMessage(m *discordgo.Message) {
 	if folderName, ok := ChannelWhitelist[m.ChannelID]; ok {
-		fileTime := time.Now()
-		var err error
-		if m.Timestamp != "" {
-			fileTime, err = m.Timestamp.Parse()
-			if err != nil {
-				fmt.Println(err)
+		// download from whitelisted channels
+		var downloadItems []*DownloadItem
+		rawLinks := getRawLinksOfMessage(m)
+		for _, rawLink := range rawLinks {
+			downloadLinks := getDownloadLinks(
+				rawLink.Link,
+				m.ChannelID,
+				false,
+			)
+			for link, filename := range downloadLinks {
+				if rawLink.Filename != "" {
+					filename = rawLink.Filename
+				}
+
+				linkTime, err := m.Timestamp.Parse()
+				if err != nil {
+					linkTime = time.Now()
+				}
+
+				downloadItems = append(downloadItems, &DownloadItem{
+					Link:     link,
+					Filename: filename,
+					Time:     linkTime,
+				})
 			}
 		}
-		if m.Author == nil {
-			m.Author = new(discordgo.User)
+
+		downloadItems = deduplicateDownloadItems(downloadItems)
+
+		for _, downloadItem := range downloadItems {
+			startDownload(
+				downloadItem.Link,
+				downloadItem.Filename,
+				folderName,
+				m.ChannelID,
+				m.Author.ID,
+				downloadItem.Time,
+			)
 		}
-		for _, iAttachment := range m.Attachments {
-			startDownload(iAttachment.URL, iAttachment.Filename, folderName, m.ChannelID, m.Author.ID, fileTime)
-		}
-		foundUrls := xurls.Strict.FindAllString(m.Content, -1)
-		for _, iFoundUrl := range foundUrls {
-			links := getDownloadLinks(iFoundUrl, m.ChannelID, false)
-			for link, filename := range links {
-				startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
-			}
-		}
-		if m.Embeds != nil && len(m.Embeds) > 0 {
-			for _, embed := range m.Embeds {
-				if embed.Provider != nil {
-					// skip preview official embeds to prevent duplictes
-					continue
-				}
-				if embed.URL != "" {
-					links := getDownloadLinks(embed.URL, m.ChannelID, false)
-					for link, filename := range links {
-						startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
-					}
-				}
-				if embed.Description != "" {
-					foundUrls := xurls.Strict.FindAllString(embed.Description, -1)
-					for _, iFoundUrl := range foundUrls {
-						links := getDownloadLinks(iFoundUrl, m.ChannelID, false)
-						for link, filename := range links {
-							startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
-						}
-					}
-				}
-				if embed.Image != nil && embed.Image.URL != "" {
-					links := getDownloadLinks(embed.Image.URL, m.ChannelID, false)
-					for link, filename := range links {
-						startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
-					}
-				}
-				if embed.Video != nil && embed.Video.URL != "" {
-					links := getDownloadLinks(embed.Video.URL, m.ChannelID, false)
-					for link, filename := range links {
-						startDownload(link, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
-					}
-				}
-			}
-		}
+
 	} else if folderName, ok := InteractiveChannelWhitelist[m.ChannelID]; ok {
 		if DiscordUserId != "" && m.Author != nil && m.Author.ID != DiscordUserId {
 			dg.ChannelTyping(m.ChannelID)
@@ -1447,9 +1431,9 @@ func Pagify(text string, delimiter string) []string {
 }
 
 func filepathExtension(filepath string) string {
-	filepath = path.Ext(filepath)
 	if strings.Contains(filepath, "?") {
 		filepath = strings.Split(filepath, "?")[0]
 	}
+	filepath = path.Ext(filepath)
 	return filepath
 }
