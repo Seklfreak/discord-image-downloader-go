@@ -30,6 +30,14 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 			return skipDuplicateLinks(links, channelID, interactive)
 		}
 	}
+	if RegexpUrlTistoryLegacy.MatchString(inputURL) {
+		links, err := getLegacyTistoryUrls(inputURL)
+		if err != nil {
+			fmt.Println("legacy tistory URL failed,", inputURL, ",", err)
+		} else if len(links) > 0 {
+			return skipDuplicateLinks(links, channelID, interactive)
+		}
+	}
 	if RegexpUrlGfycat.MatchString(inputURL) {
 		links, err := getGfycatUrls(inputURL)
 		if err != nil {

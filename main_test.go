@@ -12,8 +12,8 @@ import (
 
 func init() {
 	RegexpUrlTwitter, _ = regexp.Compile(REGEXP_URL_TWITTER)
-	RegexpUrlTistory, _ = regexp.Compile(REGEXP_URL_TISTORY)
-	RegexpUrlTistoryWithCDN, _ = regexp.Compile(REGEXP_URL_TISTORY_WITH_CDN)
+	RegexpUrlTistoryLegacy, _ = regexp.Compile(REGEXP_URL_TISTORY_LEGACY)
+	RegexpUrlTistoryLegacyWithCDN, _ = regexp.Compile(REGEXP_URL_TISTORY_LEGACY_WITH_CDN)
 	RegexpUrlGfycat, _ = regexp.Compile(REGEXP_URL_GFYCAT)
 	RegexpUrlInstagram, _ = regexp.Compile(REGEXP_URL_INSTAGRAM)
 	RegexpUrlImgurSingle, _ = regexp.Compile(REGEXP_URL_IMGUR_SINGLE)
@@ -77,7 +77,7 @@ var getTistoryUrlsTests = []urlsTestpair{
 
 func TestGetTistoryUrls(t *testing.T) {
 	for _, pair := range getTistoryUrlsTests {
-		v, err := getTistoryUrls(pair.value)
+		v, err := getLegacyTistoryUrls(pair.value)
 		if err != nil {
 			t.Errorf("For %v, expected %v, got %v", pair.value, nil, err)
 		}

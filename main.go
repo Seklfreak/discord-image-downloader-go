@@ -669,23 +669,6 @@ func getTwitterStatusUrls(url string, channelID string) (map[string]string, erro
 	return links, nil
 }
 
-func getTistoryUrls(url string) (map[string]string, error) {
-	url = strings.Replace(url, "/image/", "/original/", -1)
-	return map[string]string{url: ""}, nil
-}
-
-func getTistoryWithCDNUrls(urlI string) (map[string]string, error) {
-	parameters, _ := url.ParseQuery(urlI)
-	if val, ok := parameters["fname"]; ok {
-		if len(val) > 0 {
-			if RegexpUrlTistory.MatchString(val[0]) {
-				return getTistoryUrls(val[0])
-			}
-		}
-	}
-	return nil, nil
-}
-
 func getGfycatUrls(url string) (map[string]string, error) {
 	parts := strings.Split(url, "/")
 	if len(parts) < 3 {
@@ -1051,8 +1034,8 @@ func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
 	doc.Find(".article img, #content img, div[role=main] img, .section_blogview img").Each(func(i int, s *goquery.Selection) {
 		foundUrl, exists := s.Attr("src")
 		if exists {
-			isTistoryCdnUrl := RegexpUrlTistoryWithCDN.MatchString(foundUrl)
-			isTistoryUrl := RegexpUrlTistory.MatchString(foundUrl)
+			isTistoryCdnUrl := RegexpUrlTistoryLegacyWithCDN.MatchString(foundUrl)
+			isTistoryUrl := RegexpUrlTistoryLegacy.MatchString(foundUrl)
 			if isTistoryCdnUrl == true {
 				finalTistoryUrls, _ := getTistoryWithCDNUrls(foundUrl)
 				if len(finalTistoryUrls) > 0 {
@@ -1062,7 +1045,7 @@ func getPossibleTistorySiteUrls(url string) (map[string]string, error) {
 					}
 				}
 			} else if isTistoryUrl == true {
-				finalTistoryUrls, _ := getTistoryUrls(foundUrl)
+				finalTistoryUrls, _ := getLegacyTistoryUrls(foundUrl)
 				if len(finalTistoryUrls) > 0 {
 					for finalTistoryUrl := range finalTistoryUrls {
 						foundFilename := s.AttrOr("filename", "")
