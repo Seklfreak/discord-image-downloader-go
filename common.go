@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path"
 	"strings"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 // isDiscordEmoji matches https://cdn.discordapp.com/emojis/503141595860959243.gif, and similar URLs/filenames
@@ -34,10 +36,13 @@ func deduplicateDownloadItems(DownloadItems []*DownloadItem) []*DownloadItem {
 }
 
 func updateDiscordStatus() {
-	dg.UpdateStatus(
-		0,
-		fmt.Sprintf("%d pictures downloaded", countDownloadedImages()),
-	)
+	dg.UpdateStatusComplex(discordgo.UpdateStatusData{
+		Game: &discordgo.Game{
+			Name: fmt.Sprintf("%d downloaded pictures", countDownloadedImages()),
+			Type: discordgo.GameTypeWatching,
+		},
+		Status: "online",
+	})
 }
 
 func Pagify(text string, delimiter string) []string {
