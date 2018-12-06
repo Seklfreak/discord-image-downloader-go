@@ -31,7 +31,6 @@ import (
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/googleapi"
 	"gopkg.in/ini.v1"
-	"mvdan.cc/xurls"
 )
 
 var (
@@ -266,33 +265,7 @@ func skipDuplicateLinks(linkList map[string]string, channelID string, interactiv
 func handleDiscordMessage(m *discordgo.Message) {
 	if folderName, ok := ChannelWhitelist[m.ChannelID]; ok {
 		// download from whitelisted channels
-		var downloadItems []*DownloadItem
-		rawLinks := getRawLinksOfMessage(m)
-		for _, rawLink := range rawLinks {
-			downloadLinks := getDownloadLinks(
-				rawLink.Link,
-				m.ChannelID,
-				false,
-			)
-			for link, filename := range downloadLinks {
-				if rawLink.Filename != "" {
-					filename = rawLink.Filename
-				}
-
-				linkTime, err := m.Timestamp.Parse()
-				if err != nil {
-					linkTime = time.Now()
-				}
-
-				downloadItems = append(downloadItems, &DownloadItem{
-					Link:     link,
-					Filename: filename,
-					Time:     linkTime,
-				})
-			}
-		}
-
-		downloadItems = deduplicateDownloadItems(downloadItems)
+		downloadItems := getDownloadItemsOfMessage(m)
 
 		for _, downloadItem := range downloadItems {
 			startDownload(
@@ -305,257 +278,41 @@ func handleDiscordMessage(m *discordgo.Message) {
 			)
 		}
 
-	} else if folderName, ok := InteractiveChannelWhitelist[m.ChannelID]; ok {
-		if DiscordUserId != "" && m.Author != nil && m.Author.ID != DiscordUserId {
-			dg.ChannelTyping(m.ChannelID)
-			message := strings.ToLower(m.Content)
-			_, historyCommandIsActive := historyCommandActive[m.ChannelID]
-			switch {
-			case message == "help":
-				dg.ChannelMessageSend(m.ChannelID,
-					"**<link>** to download a link\n**version** to find out the version\n**stats** to view stats\n**channels** to list active channels\n**history** to download a full channel history\n**help** to open this help\n ")
-			case message == "version":
-				dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("discord-image-downloder-go **v%s**", VERSION))
-				dg.ChannelTyping(m.ChannelID)
-				if isLatestRelease() {
-					dg.ChannelMessageSend(m.ChannelID, "version is up to date")
-				} else {
-					dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("**update available on <%s>**", RELEASE_URL))
-				}
-			case message == "channels":
-				replyMessage := "**channels**\n"
-				for channelId, channelFolder := range ChannelWhitelist {
-					channel, err := dg.Channel(channelId)
-					if err == nil {
-						if channel.Type == discordgo.ChannelTypeDM {
-							channelRecipientUsername := "N/A"
-							for _, recipient := range channel.Recipients {
-								channelRecipientUsername = recipient.Username
-							}
-							replyMessage += fmt.Sprintf("@%s (`#%s`): `%s`\n", channelRecipientUsername, channelId, channelFolder)
-						} else {
-							guild, err := dg.Guild(channel.GuildID)
-							if err == nil {
-								replyMessage += fmt.Sprintf("#%s/%s (`#%s`): `%s`\n", guild.Name, channel.Name, channelId, channelFolder)
-							}
-						}
-					}
-				}
-				replyMessage += "**interactive channels**\n"
-				for channelId, channelFolder := range InteractiveChannelWhitelist {
-					channel, err := dg.Channel(channelId)
-					if err == nil {
-						if channel.Type == discordgo.ChannelTypeDM {
-							channelRecipientUsername := "N/A"
-							for _, recipient := range channel.Recipients {
-								channelRecipientUsername = recipient.Username
-							}
-							replyMessage += fmt.Sprintf("@%s (`#%s`): `%s`\n", channelRecipientUsername, channelId, channelFolder)
-						} else {
-							guild, err := dg.Guild(channel.GuildID)
-							if err == nil {
-								replyMessage += fmt.Sprintf("#%s/%s (`#%s`): `%s`\n", guild.Name, channel.Name, channelId, channelFolder)
-							}
-						}
-					}
-				}
-				for _, page := range Pagify(replyMessage, "\n") {
-					dg.ChannelMessageSend(m.ChannelID, page)
-				}
-			case message == "stats":
-				dg.ChannelTyping(m.ChannelID)
-				channelStats := make(map[string]int)
-				userStats := make(map[string]int)
-				userGuilds := make(map[string]string)
-				i := 0
-				myDB.Use("Downloads").ForEachDoc(func(id int, docContent []byte) (willMoveOn bool) {
-					downloadedImage := findDownloadedImageById(id)
-					channelStats[downloadedImage.ChannelId] += 1
-					userStats[downloadedImage.UserId] += 1
-					if _, ok := userGuilds[downloadedImage.UserId]; !ok {
-						channel, err := dg.State.Channel(downloadedImage.ChannelId)
-						if err == nil && channel.GuildID != "" {
-							userGuilds[downloadedImage.UserId] = channel.GuildID
-						}
-					}
-					i++
-					return true
-				})
-				channelStatsSorted := sortStringIntMapByValue(channelStats)
-				userStatsSorted := sortStringIntMapByValue(userStats)
-				replyMessage := fmt.Sprintf("I downloaded **%d** pictures in **%d** channels by **%d** users\n", i, len(channelStats), len(userStats))
-				replyMessage += "**channel breakdown**\n"
-				for _, downloads := range channelStatsSorted {
-					channel, err := dg.State.Channel(downloads.Key)
-					if err == nil {
-						if channel.Type == discordgo.ChannelTypeDM {
-							channelRecipientUsername := "N/A"
-							for _, recipient := range channel.Recipients {
-								channelRecipientUsername = recipient.Username
-							}
-							replyMessage += fmt.Sprintf("@%s (`#%s`): **%d** downloads\n", channelRecipientUsername, downloads.Key, downloads.Value)
-						} else {
-							guild, err := dg.State.Guild(channel.GuildID)
-							if err == nil {
-								replyMessage += fmt.Sprintf("#%s/%s (`#%s`): **%d** downloads\n", guild.Name, channel.Name, downloads.Key, downloads.Value)
-							} else {
-								fmt.Println(err)
-							}
-						}
-					} else {
-						fmt.Println(err)
-					}
-				}
-				replyMessage += "**user breakdown**\n"
-				userI := 0
-				for _, downloads := range userStatsSorted {
-					userI++
-					if userI > 10 {
-						replyMessage += "_only the top 10 users get shown_\n"
-						break
-					}
-					if guildId, ok := userGuilds[downloads.Key]; ok {
-						user, err := dg.State.Member(guildId, downloads.Key)
-						if err == nil {
-							replyMessage += fmt.Sprintf("@%s: **%d** downloads\n", user.User.Username, downloads.Value)
-						} else {
-							replyMessage += fmt.Sprintf("@`%s`: **%d** downloads\n", downloads.Key, downloads.Value)
-						}
-					} else {
-						replyMessage += fmt.Sprintf("@`%s`: **%d** downloads\n", downloads.Key, downloads.Value)
-					}
-				}
-				for _, page := range Pagify(replyMessage, "\n") {
-					dg.ChannelMessageSend(m.ChannelID, page)
-				}
-			case message == "history", historyCommandIsActive:
-				i := 0
-				_, historyCommandIsSet := historyCommandActive[m.ChannelID]
-				if !historyCommandIsSet || historyCommandActive[m.ChannelID] == "" {
-					historyCommandActive[m.ChannelID] = ""
+	} else if _, ok := InteractiveChannelWhitelist[m.ChannelID]; ok {
+		// handle interactive channel
 
-					idArray := strings.Split(message, ",")
-					for _, channelValue := range idArray {
-						channelValue = strings.TrimSpace(channelValue)
-						if folder, ok := ChannelWhitelist[channelValue]; ok {
-							dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("downloading to `%s`", folder))
-							historyCommandActive[m.ChannelID] = "downloading"
-							lastBefore := ""
-							var lastBeforeTime time.Time
-						MessageRequestingLoop:
-							for true {
-								if lastBeforeTime != (time.Time{}) {
-									fmt.Printf("[%s] Requesting 100 more messages, (before %s)\n", time.Now().Format(time.Stamp), lastBeforeTime)
-									dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Requesting 100 more messages, (before %s)\n", lastBeforeTime))
-								}
-								messages, err := dg.ChannelMessages(channelValue, 100, lastBefore, "", "")
-								if err == nil {
-									if len(messages) <= 0 {
-										delete(historyCommandActive, m.ChannelID)
-										break MessageRequestingLoop
-									}
-									lastBefore = messages[len(messages)-1].ID
-									lastBeforeTime, err = messages[len(messages)-1].Timestamp.Parse()
-									if err != nil {
-										fmt.Println(err)
-									}
-									for _, message := range messages {
-										fileTime := time.Now()
-										if m.Timestamp != "" {
-											fileTime, err = message.Timestamp.Parse()
-											if err != nil {
-												fmt.Println(err)
-											}
-										}
-										if historyCommandActive[m.ChannelID] == "cancel" {
-											delete(historyCommandActive, m.ChannelID)
-											break MessageRequestingLoop
-										}
-										for _, iAttachment := range message.Attachments {
-											if len(findDownloadedImageByUrl(iAttachment.URL)) == 0 {
-												i++
-												startDownload(iAttachment.URL, iAttachment.Filename, folder, message.ChannelID, message.Author.ID, fileTime)
-											}
-										}
-										foundUrls := xurls.Strict.FindAllString(message.Content, -1)
-										for _, iFoundUrl := range foundUrls {
-											links := getDownloadLinks(iFoundUrl, message.ChannelID, false)
-											for link, filename := range links {
-												if len(findDownloadedImageByUrl(link)) == 0 {
-													i++
-													startDownload(link, filename, folder, message.ChannelID, message.Author.ID, fileTime)
-												}
-											}
-										}
-									}
-								} else {
-									dg.ChannelMessageSend(m.ChannelID, err.Error())
-									fmt.Println(err)
-									delete(historyCommandActive, m.ChannelID)
-									break MessageRequestingLoop
-								}
-							}
-							dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("done, %d download links started!", i))
-						} else {
-							dg.ChannelMessageSend(m.ChannelID, "Please tell me one or multiple Channel IDs (separated by commas)\nPlease make sure the channels have been whitelisted before submitting.")
-						}
-					}
-				} else if historyCommandActive[m.ChannelID] == "downloading" && message == "cancel" {
-					historyCommandActive[m.ChannelID] = "cancel"
-				}
-			default:
-				if link, ok := interactiveChannelLinkTemp[m.ChannelID]; ok {
-					fileTime := time.Now()
-					var err error
-					if m.Timestamp != "" {
-						fileTime, err = m.Timestamp.Parse()
-						if err != nil {
-							fmt.Println(err)
-						}
-					}
-					if m.Content == "." {
-						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> started", link))
-						dg.ChannelTyping(m.ChannelID)
-						delete(interactiveChannelLinkTemp, m.ChannelID)
-						links := getDownloadLinks(link, m.ChannelID, true)
-						for linkR, filename := range links {
-							startDownload(linkR, filename, folderName, m.ChannelID, m.Author.ID, fileTime)
-						}
-						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> finished", link))
-					} else if strings.ToLower(m.Content) == "cancel" {
-						delete(interactiveChannelLinkTemp, m.ChannelID)
-						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> cancelled", link))
-					} else if IsValid(m.Content) {
-						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> started", link))
-						dg.ChannelTyping(m.ChannelID)
-						delete(interactiveChannelLinkTemp, m.ChannelID)
-						links := getDownloadLinks(link, m.ChannelID, true)
-						for linkR, filename := range links {
-							startDownload(linkR, filename, m.Content, m.ChannelID, m.Author.ID, fileTime)
-						}
-						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Download of <%s> finished", link))
-					} else {
-						dg.ChannelMessageSend(m.ChannelID, "invalid path")
-					}
-				} else {
-					_ = folderName
-					foundLinks := false
-					for _, iAttachment := range m.Attachments {
-						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path or **cancel** to cancel the download %s", iAttachment.URL, folderName))
-						interactiveChannelLinkTemp[m.ChannelID] = iAttachment.URL
-						foundLinks = true
-					}
-					foundUrls := xurls.Strict.FindAllString(m.Content, -1)
-					for _, iFoundUrl := range foundUrls {
-						dg.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path or **cancel** to cancel the download %s", iFoundUrl, folderName))
-						interactiveChannelLinkTemp[m.ChannelID] = iFoundUrl
-						foundLinks = true
-					}
-					if foundLinks == false {
-						dg.ChannelMessageSend(m.ChannelID, "unable to find valid link")
-					}
-				}
+		// skip messages from the Bot
+		if m.Author == nil || m.Author.ID == DiscordUserId {
+			return
+		}
+
+		dg.ChannelTyping(m.ChannelID)
+
+		args := strings.Fields(m.Content)
+		if len(args) <= 0 {
+			return
+		}
+
+		_, historyCommandIsActive := historyCommandActive[m.ChannelID]
+
+		switch strings.ToLower(args[0]) {
+		case "help":
+			helpHandler(m)
+		case "version":
+			versionHandler(m)
+		case "channels":
+			channelsHandler(m)
+		case "stats":
+			statsHandler(m)
+		case "history":
+			historyHandler(m)
+		default:
+			if historyCommandIsActive {
+				historyHandler(m)
+				return
 			}
+
+			defaultHandler(m)
 		}
 	}
 }
@@ -1400,40 +1157,3 @@ type PairList []Pair
 func (p PairList) Len() int           { return len(p) }
 func (p PairList) Less(i, j int) bool { return p[i].Value < p[j].Value }
 func (p PairList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-
-func updateDiscordStatus() {
-	dg.UpdateStatus(0, fmt.Sprintf("%d pictures downloaded", countDownloadedImages()))
-}
-
-func Pagify(text string, delimiter string) []string {
-	result := make([]string, 0)
-	textParts := strings.Split(text, delimiter)
-	currentOutputPart := ""
-	for _, textPart := range textParts {
-		if len(currentOutputPart)+len(textPart)+len(delimiter) <= 1992 {
-			if len(currentOutputPart) > 0 || len(result) > 0 {
-				currentOutputPart += delimiter + textPart
-			} else {
-				currentOutputPart += textPart
-			}
-		} else {
-			result = append(result, currentOutputPart)
-			currentOutputPart = ""
-			if len(textPart) <= 1992 {
-				currentOutputPart = textPart
-			}
-		}
-	}
-	if currentOutputPart != "" {
-		result = append(result, currentOutputPart)
-	}
-	return result
-}
-
-func filepathExtension(filepath string) string {
-	if strings.Contains(filepath, "?") {
-		filepath = strings.Split(filepath, "?")[0]
-	}
-	filepath = path.Ext(filepath)
-	return filepath
-}

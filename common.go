@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"path"
 	"strings"
 )
 
@@ -29,4 +31,44 @@ func deduplicateDownloadItems(DownloadItems []*DownloadItem) []*DownloadItem {
 	}
 
 	return result
+}
+
+func updateDiscordStatus() {
+	dg.UpdateStatus(
+		0,
+		fmt.Sprintf("%d pictures downloaded", countDownloadedImages()),
+	)
+}
+
+func Pagify(text string, delimiter string) []string {
+	result := make([]string, 0)
+	textParts := strings.Split(text, delimiter)
+	currentOutputPart := ""
+	for _, textPart := range textParts {
+		if len(currentOutputPart)+len(textPart)+len(delimiter) <= 1992 {
+			if len(currentOutputPart) > 0 || len(result) > 0 {
+				currentOutputPart += delimiter + textPart
+			} else {
+				currentOutputPart += textPart
+			}
+		} else {
+			result = append(result, currentOutputPart)
+			currentOutputPart = ""
+			if len(textPart) <= 1992 {
+				currentOutputPart = textPart
+			}
+		}
+	}
+	if currentOutputPart != "" {
+		result = append(result, currentOutputPart)
+	}
+	return result
+}
+
+func filepathExtension(filepath string) string {
+	if strings.Contains(filepath, "?") {
+		filepath = strings.Split(filepath, "?")[0]
+	}
+	filepath = path.Ext(filepath)
+	return filepath
 }

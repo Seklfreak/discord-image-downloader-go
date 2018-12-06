@@ -3,6 +3,10 @@ package main
 import (
 	"fmt"
 	"net/url"
+	"time"
+
+	"github.com/bwmarrin/discordgo"
+	"mvdan.cc/xurls"
 )
 
 func getDownloadLinks(inputURL string, channelID string, interactive bool) map[string]string {
@@ -149,4 +153,92 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) map[s
 	}
 
 	return skipDuplicateLinks(map[string]string{inputURL: ""}, channelID, interactive)
+}
+
+// getDownloadItemsOfMessage will extract all unique download links out of a message
+func getDownloadItemsOfMessage(message *discordgo.Message) []*DownloadItem {
+	var downloadItems []*DownloadItem
+
+	linkTime, err := message.Timestamp.Parse()
+	if err != nil {
+		linkTime = time.Now()
+	}
+
+	rawLinks := getRawLinksOfMessage(message)
+	for _, rawLink := range rawLinks {
+		downloadLinks := getDownloadLinks(
+			rawLink.Link,
+			message.ChannelID,
+			false,
+		)
+		for link, filename := range downloadLinks {
+			if rawLink.Filename != "" {
+				filename = rawLink.Filename
+			}
+
+			downloadItems = append(downloadItems, &DownloadItem{
+				Link:     link,
+				Filename: filename,
+				Time:     linkTime,
+			})
+		}
+	}
+
+	downloadItems = deduplicateDownloadItems(downloadItems)
+
+	return downloadItems
+}
+
+// getRawLinksOfMessage will extract all raw links of a message
+func getRawLinksOfMessage(message *discordgo.Message) []*DownloadItem {
+	var links []*DownloadItem
+
+	if message.Author == nil {
+		message.Author = new(discordgo.User)
+	}
+
+	for _, attachment := range message.Attachments {
+		links = append(links, &DownloadItem{
+			Link:     attachment.URL,
+			Filename: attachment.Filename,
+		})
+	}
+
+	foundLinks := xurls.Strict.FindAllString(message.Content, -1)
+	for _, foundLink := range foundLinks {
+		links = append(links, &DownloadItem{
+			Link: foundLink,
+		})
+	}
+
+	for _, embed := range message.Embeds {
+		if embed.URL != "" {
+			links = append(links, &DownloadItem{
+				Link: embed.URL,
+			})
+		}
+
+		if embed.Description != "" {
+			foundLinks = xurls.Strict.FindAllString(embed.Description, -1)
+			for _, foundLink := range foundLinks {
+				links = append(links, &DownloadItem{
+					Link: foundLink,
+				})
+			}
+		}
+
+		if embed.Image != nil && embed.Image.URL != "" {
+			links = append(links, &DownloadItem{
+				Link: embed.Image.URL,
+			})
+		}
+
+		if embed.Video != nil && embed.Video.URL != "" {
+			links = append(links, &DownloadItem{
+				Link: embed.Video.URL,
+			})
+		}
+	}
+
+	return links
 }
