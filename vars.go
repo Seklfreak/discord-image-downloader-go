@@ -1,7 +1,7 @@
 package main
 
 const (
-	VERSION         = "1.34"
+	VERSION         = "1.35"
 	DATABASE_DIR    = "database"
 	RELEASE_URL     = "https://github.com/Seklfreak/discord-image-downloader-go/releases/latest"
 	RELEASE_API_URL = "https://api.github.com/repos/Seklfreak/discord-image-downloader-go/releases/latest"
