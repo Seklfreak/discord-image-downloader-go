@@ -394,14 +394,14 @@ func getTwitterStatusUrls(url string, channelID string) (map[string]string, erro
 				links[lastVideoVariant.Url] = ""
 			}
 		} else {
-			foundUrls := getDownloadLinks(tweetMedia.Media_url_https, channelID, false)
+			foundUrls, _ := getDownloadLinks(tweetMedia.Media_url_https, channelID, false)
 			for foundUrlKey, foundUrlValue := range foundUrls {
 				links[foundUrlKey] = foundUrlValue
 			}
 		}
 	}
 	for _, tweetUrl := range tweet.Entities.Urls {
-		foundUrls := getDownloadLinks(tweetUrl.Expanded_url, channelID, false)
+		foundUrls, _ := getDownloadLinks(tweetUrl.Expanded_url, channelID, false)
 		for foundUrlKey, foundUrlValue := range foundUrls {
 			links[foundUrlKey] = foundUrlValue
 		}
@@ -1127,7 +1127,7 @@ func findDownloadedImageByUrl(url string) []*DownloadedImage {
 func countDownloadedImages() int {
 	i := 0
 	myDB.Use("Downloads").ForEachDoc(func(id int, docContent []byte) (willMoveOn bool) {
-		//fmt.Printf("%v\n", findDownloadedImageById(id))
+		// fmt.Printf("%v\n", findDownloadedImageById(id))
 		i++
 		return true
 	})

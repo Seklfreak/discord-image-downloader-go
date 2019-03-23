@@ -213,7 +213,7 @@ func historyHandler(message *discordgo.Message) {
 							}
 							foundUrls := xurls.Strict.FindAllString(message.Content, -1)
 							for _, iFoundUrl := range foundUrls {
-								links := getDownloadLinks(iFoundUrl, message.ChannelID, false)
+								links, _ := getDownloadLinks(iFoundUrl, message.ChannelID, false)
 								for link, filename := range links {
 									if len(findDownloadedImageByUrl(link)) == 0 {
 										i++
@@ -255,7 +255,7 @@ func defaultHandler(message *discordgo.Message) {
 			dg.ChannelMessageSend(message.ChannelID, fmt.Sprintf("Download of <%s> started", link))
 			dg.ChannelTyping(message.ChannelID)
 			delete(interactiveChannelLinkTemp, message.ChannelID)
-			links := getDownloadLinks(link, message.ChannelID, true)
+			links, _ := getDownloadLinks(link, message.ChannelID, true)
 			for linkR, filename := range links {
 				startDownload(linkR, filename, folderName, message.ChannelID, message.Author.ID, fileTime)
 			}
@@ -267,7 +267,7 @@ func defaultHandler(message *discordgo.Message) {
 			dg.ChannelMessageSend(message.ChannelID, fmt.Sprintf("Download of <%s> started", link))
 			dg.ChannelTyping(message.ChannelID)
 			delete(interactiveChannelLinkTemp, message.ChannelID)
-			links := getDownloadLinks(link, message.ChannelID, true)
+			links, _ := getDownloadLinks(link, message.ChannelID, true)
 			for linkR, filename := range links {
 				startDownload(linkR, filename, message.Content, message.ChannelID, message.Author.ID, fileTime)
 			}

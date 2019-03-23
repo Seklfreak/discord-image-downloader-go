@@ -30,6 +30,7 @@ config.ini
 crossbuild.bat
 
 testfolder/*
+test/*
 database*/
 
 .idea/
