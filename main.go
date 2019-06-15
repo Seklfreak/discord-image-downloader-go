@@ -369,7 +369,7 @@ func getTwitterParamsUrls(url string) (map[string]string, error) {
 	matches := RegexpUrlTwitterParams.FindStringSubmatch(url)
 
 	return map[string]string{
-		"https://pbs.twimg.com/media/" + matches[3] + "." + matches[4] + ":orig": "",
+		"https://pbs.twimg.com/media/" + matches[3] + "." + matches[4] + ":orig": matches[3] + "." + matches[4],
 	}, nil
 }
 
