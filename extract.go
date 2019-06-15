@@ -18,6 +18,14 @@ func getDownloadLinks(inputURL string, channelID string, interactive bool) (map[
 			return skipDuplicateLinks(links, channelID, interactive), true
 		}
 	}
+	if RegexpUrlTwitterParams.MatchString(inputURL) {
+		links, err := getTwitterParamsUrls(inputURL)
+		if err != nil {
+			fmt.Println("twitter params URL failed,", inputURL, ",", err)
+		} else if len(links) > 0 {
+			return skipDuplicateLinks(links, channelID, interactive), true
+		}
+	}
 	if RegexpUrlTwitterStatus.MatchString(inputURL) {
 		links, err := getTwitterStatusUrls(inputURL, channelID)
 		if err != nil {

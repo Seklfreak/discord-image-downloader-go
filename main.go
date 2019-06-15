@@ -365,6 +365,14 @@ func getTwitterUrls(url string) (map[string]string, error) {
 	return map[string]string{"https:" + parts[1] + ":orig": filenameFromUrl(parts[1])}, nil
 }
 
+func getTwitterParamsUrls(url string) (map[string]string, error) {
+	matches := RegexpUrlTwitterParams.FindStringSubmatch(url)
+
+	return map[string]string{
+		"https://pbs.twimg.com/media/" + matches[3] + "." + matches[4] + ":orig": "",
+	}, nil
+}
+
 func getTwitterStatusUrls(url string, channelID string) (map[string]string, error) {
 	if twitterClient == nil {
 		return nil, errors.New("invalid twitter api keys set")

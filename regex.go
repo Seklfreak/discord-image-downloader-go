@@ -6,6 +6,7 @@ import (
 
 const (
 	REGEXP_URL_TWITTER                 = `^http(s?):\/\/pbs(-[0-9]+)?\.twimg\.com\/media\/[^\./]+\.(jpg|png)((\:[a-z]+)?)$`
+	REGEXP_URL_TWITTER_PARAMS          = `^http(s?):\/\/pbs(-[0-9]+)?\.twimg\.com\/media\/([^\./]+)\?format=(jpg|png)&name=([a-z]+)[a-z=&]*$`
 	REGEXP_URL_TWITTER_STATUS          = `^http(s?):\/\/(www\.)?twitter\.com\/([A-Za-z0-9-_\.]+\/status\/|statuses\/|i\/web\/status\/)([0-9]+)$`
 	REGEXP_URL_TISTORY                 = `^http(s?):\/\/t[0-9]+\.daumcdn\.net\/cfile\/tistory\/([A-Z0-9]+?)(\?original)?$`
 	REGEXP_URL_TISTORY_LEGACY          = `^http(s?):\/\/[a-z0-9]+\.uf\.tistory\.com\/(image|original)\/[A-Z0-9]+$`
@@ -27,6 +28,7 @@ const (
 
 var (
 	RegexpUrlTwitter              *regexp.Regexp
+	RegexpUrlTwitterParams        *regexp.Regexp
 	RegexpUrlTwitterStatus        *regexp.Regexp
 	RegexpUrlTistory              *regexp.Regexp
 	RegexpUrlTistoryLegacy        *regexp.Regexp
@@ -47,6 +49,10 @@ var (
 func initRegex() error {
 	var err error
 	RegexpUrlTwitter, err = regexp.Compile(REGEXP_URL_TWITTER)
+	if err != nil {
+		return err
+	}
+	RegexpUrlTwitterParams, err = regexp.Compile(REGEXP_URL_TWITTER_PARAMS)
 	if err != nil {
 		return err
 	}
