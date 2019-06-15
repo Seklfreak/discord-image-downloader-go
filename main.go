@@ -222,7 +222,7 @@ func main() {
 	DiscordUserId = u.ID
 
 	if cfg.Section("general").HasKey("set downloaded image count as discord status") {
-		if cfg.Section("general").Key("set downloaded image count as discord status").MustBool(){
+		if cfg.Section("general").Key("set downloaded image count as discord status").MustBool() {
 			updateDiscordStatus()
 		}
 	}
