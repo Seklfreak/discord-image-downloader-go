@@ -1,6 +1,6 @@
 module github.com/Seklfreak/discord-image-downloader-go
 
-go 1.12
+go 1.13
 
 require (
 	bou.ke/monkey v1.0.1 // indirect
@@ -10,7 +10,7 @@ require (
 	github.com/Jeffail/gabs v1.2.0
 	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/azr/backoff v0.0.0-20160115115103-53511d3c7330 // indirect
-	github.com/bwmarrin/discordgo v0.19.0
+	github.com/bwmarrin/discordgo v0.16.1-0.20190826195003-1d90c5da95a4
 	github.com/dustin/go-jsonpointer v0.0.0-20160814072949-ba0abeacc3dc // indirect
 	github.com/dustin/gojson v0.0.0-20160307161227-2e71ec9dd5ad // indirect
 	github.com/garyburd/go-oauth v0.0.0-20180319155456-bca2e7f09a17 // indirect

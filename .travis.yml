@@ -1,6 +1,6 @@
 language: go
 go:
-  - "1.12"
+  - "1.13"
 install:
     - env GO111MODULE=on go mod download
     - go get github.com/mitchellh/gox
