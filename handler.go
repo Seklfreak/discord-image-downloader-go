@@ -193,31 +193,32 @@ func historyHandler(message *discordgo.Message) {
 						if err != nil {
 							fmt.Println(err)
 						}
-						for _, message := range messages {
+						for _, msg := range messages {
 							fileTime := time.Now()
-							if message.Timestamp != "" {
-								fileTime, err = message.Timestamp.Parse()
+							if msg.Timestamp != "" {
+								fileTime, err = msg.Timestamp.Parse()
 								if err != nil {
 									fmt.Println(err)
 								}
 							}
 							if historyCommandActive[message.ChannelID] == "cancel" {
 								delete(historyCommandActive, message.ChannelID)
+								dg.ChannelMessageSend(message.ChannelID, "cancelled history downloading")
 								break MessageRequestingLoop
 							}
-							for _, iAttachment := range message.Attachments {
+							for _, iAttachment := range msg.Attachments {
 								if len(findDownloadedImageByUrl(iAttachment.URL)) == 0 {
 									i++
-									startDownload(iAttachment.URL, iAttachment.Filename, folder, message.ChannelID, message.Author.ID, fileTime)
+									startDownload(iAttachment.URL, iAttachment.Filename, folder, msg.ChannelID, msg.Author.ID, fileTime)
 								}
 							}
-							foundUrls := xurls.Strict.FindAllString(message.Content, -1)
+							foundUrls := xurls.Strict.FindAllString(msg.Content, -1)
 							for _, iFoundUrl := range foundUrls {
-								links, _ := getDownloadLinks(iFoundUrl, message.ChannelID, false)
+								links, _ := getDownloadLinks(iFoundUrl, msg.ChannelID, false)
 								for link, filename := range links {
 									if len(findDownloadedImageByUrl(link)) == 0 {
 										i++
-										startDownload(link, filename, folder, message.ChannelID, message.Author.ID, fileTime)
+										startDownload(link, filename, folder, msg.ChannelID, msg.Author.ID, fileTime)
 									}
 								}
 							}
