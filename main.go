@@ -1041,8 +1041,9 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 	}
 
 	contentTypeParts := strings.Split(contentType, "/")
-	if contentTypeParts[0] != "image" && contentTypeParts[0] != "video" {
-		fmt.Println("No image or video found at", dUrl)
+	if t := contentTypeParts[0]; t != "image" && t != "video" && t != "audio" &&
+		!(t == "application" && isAudioFile(filename)) {
+		fmt.Println("No image, video, or audio found at", dUrl)
 		return true
 	}
 
@@ -1077,6 +1078,15 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 
 	updateDiscordStatus()
 	return true
+}
+
+func isAudioFile(f string) bool {
+	switch strings.ToLower(path.Ext(f)) {
+	case ".mp3", ".wav", ".aif":
+		return true
+	default:
+		return false
+	}
 }
 
 type DownloadedImage struct {
