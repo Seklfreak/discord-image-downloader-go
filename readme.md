@@ -6,6 +6,7 @@
 [Download the latest release](https://github.com/Seklfreak/discord-image-downloader-go/releases/latest)
 
 [**get-got/discord-downloader-go**](https://github.com/get-got/discord-downloader-go)
+
 _- A maintained fork of this project that implements features such as JSON configuration_
 
 ## Discord SelfBots are forbidden!
