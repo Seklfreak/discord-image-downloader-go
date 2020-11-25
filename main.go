@@ -98,6 +98,7 @@ func main() {
 		cfg.Section("general").NewKey("max download retries", "5")
 		cfg.Section("general").NewKey("download timeout", "60")
 		cfg.Section("general").NewKey("send notices to interactive channels", "false")
+		cfg.Section("general").NewKey("set downloaded image count as discord status", "true")
 		cfg.Section("channels").NewKey("channelid1", "C:\\full\\path\\1")
 		cfg.Section("channels").NewKey("channelid2", "C:\\full\\path\\2")
 		cfg.Section("channels").NewKey("channelid3", "C:\\full\\path\\3")
@@ -220,7 +221,11 @@ func main() {
 		u.Username)
 	DiscordUserId = u.ID
 
-	updateDiscordStatus()
+	if cfg.Section("general").HasKey("set downloaded image count as discord status") {
+		if cfg.Section("general").Key("set downloaded image count as discord status").MustBool() {
+			updateDiscordStatus()
+		}
+	}
 
 	// keep program running until CTRL-C is pressed.
 	sc := make(chan os.Signal, 1)
