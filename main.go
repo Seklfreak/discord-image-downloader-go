@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -160,7 +161,7 @@ func main() {
 	}
 
 	if cfg.Section("auth").HasKey("token") {
-		dg, err = discordgo.New(cfg.Section("auth").Key("token").String())
+		dg, err = discordgo.New("Bot " + cfg.Section("auth").Key("token").String())
 	} else {
 		dg, err = discordgo.New(
 			cfg.Section("auth").Key("email").String(),
@@ -227,6 +228,7 @@ func main() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
 	myDB.Close()
+	dg.Close()
 	return
 }
 
@@ -1040,9 +1042,10 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 		fmt.Printf("[%s] Saving possible duplicate (filenames match): %s to %s\n", time.Now().Format(time.Stamp), tmpPath, completePath)
 	}
 
+	extension := filepath.Ext(filename)
 	contentTypeParts := strings.Split(contentType, "/")
 	if t := contentTypeParts[0]; t != "image" && t != "video" && t != "audio" &&
-		!(t == "application" && isAudioFile(filename)) {
+		!(t == "application" && isAudioFile(filename) && strings.ToLower(extension) != ".mov") {
 		fmt.Println("No image, video, or audio found at", dUrl)
 		return true
 	}
