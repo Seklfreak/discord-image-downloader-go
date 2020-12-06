@@ -161,7 +161,7 @@ func main() {
 	}
 
 	if cfg.Section("auth").HasKey("token") {
-		dg, err = discordgo.New("Bot " + cfg.Section("auth").Key("token").String())
+		dg, err = discordgo.New(cfg.Section("auth").Key("token").String())
 	} else {
 		dg, err = discordgo.New(
 			cfg.Section("auth").Key("email").String(),

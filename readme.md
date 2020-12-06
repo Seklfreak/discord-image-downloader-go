@@ -30,6 +30,8 @@ When you run the tool for the first time it creates a `config.ini` file with exa
 
 In case you are using two-factor authentication you have to login using your token. Remove the email and password lines under the auth section in the config file and instead put in `token = <your token>`. You can acquire your token from the developer tools in your browser (`localStorage.token`) or discord client (Control+Shift+I (Windows) or Command+Option+I, click Application, click Local Storage, click `https://discordapp.com`, and find "token" and paste the value).
 
+If you wish to use a **bot account**, **not a user account**, go to https://discord.com/developers/applications and create an application, then create a bot in the `Bot` tab in application settings. The bot tab will show you your token. You can invite to your server(s) by going to the `OAuth2` tab in application settings, check `bot`, and copy&paste the url into your browser. **In the `config.ini`, add "Bot " before your token. (example: `token = Bot mytokenhere`)**
+
 ## How to download old pictures?
 By default, the tool only downloads new links posted while the tool is running. You can also set up the tool to download the complete history of a channel. To do this you have to run this tool with a separate discord account. Send your second account a dm on your primary account and get the channel id from the direct message channel. Now add this channel id to the config by adding the following lines:
 ```
