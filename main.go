@@ -1045,7 +1045,10 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 	extension := filepath.Ext(filename)
 	contentTypeParts := strings.Split(contentType, "/")
 	if t := contentTypeParts[0]; t != "image" && t != "video" && t != "audio" &&
-		!(t == "application" && isAudioFile(filename)) && strings.ToLower(extension) != ".mov" {
+		!(t == "application" && isAudioFile(filename)) &&
+		strings.ToLower(extension) != ".mov" &&
+		strings.ToLower(extension) != ".mp4" &&
+		strings.ToLower(extension) != ".webm" {
 		fmt.Println("No image, video, or audio found at", dUrl)
 		return true
 	}
