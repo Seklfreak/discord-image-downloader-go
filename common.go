@@ -36,13 +36,19 @@ func deduplicateDownloadItems(DownloadItems []*DownloadItem) []*DownloadItem {
 }
 
 func updateDiscordStatus() {
-	dg.UpdateStatusComplex(discordgo.UpdateStatusData{
-		Game: &discordgo.Game{
-			Name: fmt.Sprintf("%d downloaded pictures", countDownloadedImages()),
-			Type: discordgo.GameTypeWatching,
-		},
-		Status: "online",
-	})
+	if StatusEnabled {
+		dg.UpdateStatusComplex(discordgo.UpdateStatusData{
+			Game: &discordgo.Game{
+				Name: fmt.Sprintf("%d %s", countDownloadedImages(), StatusSuffix),
+				Type: StatusLabel,
+			},
+			Status: StatusType,
+		})
+	} else if StatusType != "online" {
+		dg.UpdateStatusComplex(discordgo.UpdateStatusData{
+			Status: StatusType,
+		})
+	}
 }
 
 func Pagify(text string, delimiter string) []string {
