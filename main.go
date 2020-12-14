@@ -168,8 +168,11 @@ func main() {
 			cfg.Section("auth").Key("password").String())
 	}
 	if err != nil {
-		fmt.Println("error creating Discord session,", err)
-		return
+		// Newer discordgo throws this error for some reason with Email/Password login
+		if err.Error() != "Unable to fetch discord authentication token. <nil>" {
+			fmt.Println("error creating Discord session,", err)
+			return
+		}
 	}
 
 	dg.AddHandler(messageCreate)
