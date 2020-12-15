@@ -221,12 +221,13 @@ func main() {
 			}
 		}
 	}
-
+	dg.LogLevel = -1 // to ignore dumb wsapi error
 	err = dg.Open()
 	if err != nil {
 		fmt.Println("error opening connection,", err)
 		return
 	}
+	dg.LogLevel = 0 // reset
 
 	u, err := dg.User("@me")
 	if err != nil {
