@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"mvdan.cc/xurls"
+	"mvdan.cc/xurls/v2"
 )
 
 // helpHandler displays the help message
@@ -212,7 +212,7 @@ func historyHandler(message *discordgo.Message) {
 									startDownload(iAttachment.URL, iAttachment.Filename, folder, msg.ChannelID, msg.Author.ID, fileTime)
 								}
 							}
-							foundUrls := xurls.Strict.FindAllString(msg.Content, -1)
+							foundUrls := xurls.Strict().FindAllString(msg.Content, -1)
 							for _, iFoundUrl := range foundUrls {
 								links, _ := getDownloadLinks(iFoundUrl, msg.ChannelID, false)
 								for link, filename := range links {
@@ -284,7 +284,7 @@ func defaultHandler(message *discordgo.Message) {
 			interactiveChannelLinkTemp[message.ChannelID] = iAttachment.URL
 			foundLinks = true
 		}
-		foundUrls := xurls.Strict.FindAllString(message.Content, -1)
+		foundUrls := xurls.Strict().FindAllString(message.Content, -1)
 		for _, iFoundUrl := range foundUrls {
 			dg.ChannelMessageSend(message.ChannelID, fmt.Sprintf("Where do you want to save <%s>?\nType **.** for default path or **cancel** to cancel the download %s", iFoundUrl, folderName))
 			interactiveChannelLinkTemp[message.ChannelID] = iFoundUrl

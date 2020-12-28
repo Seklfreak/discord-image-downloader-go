@@ -29,12 +29,13 @@ _testmain.go
 config.ini
 crossbuild.bat
 
-testfolder/*
-test/*
-database*/
-
 .idea/
 
 vendor
 credentials.json
 .DS_Store
+
+# Exclude subdirectories (things like database, saved images during testing)
+/**
+# Exclude build command shortcut(s)
+*.cmd

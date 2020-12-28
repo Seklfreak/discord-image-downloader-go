@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -47,6 +48,10 @@ var (
 	twitterClient                    *anaconda.TwitterApi
 	DownloadTimeout                  int
 	SendNoticesToInteractiveChannels bool
+	StatusEnabled                    bool
+	StatusType                       string
+	StatusLabel                      discordgo.GameType
+	StatusSuffix                     string
 	clientCredentialsJson            string
 	DriveService                     *drive.Service
 	RegexpFilename                   *regexp.Regexp
@@ -65,7 +70,7 @@ type ImgurAlbumObject struct {
 }
 
 func main() {
-	fmt.Printf("discord-image-downloader-go version %s\n", VERSION)
+	fmt.Printf("> discord-image-downloader-go v%s -- discordgo v%s\n", VERSION, discordgo.VERSION)
 	if !isLatestRelease() {
 		fmt.Printf("update available on %s !\n", RELEASE_URL)
 	}
@@ -98,6 +103,10 @@ func main() {
 		cfg.Section("general").NewKey("max download retries", "5")
 		cfg.Section("general").NewKey("download timeout", "60")
 		cfg.Section("general").NewKey("send notices to interactive channels", "false")
+		cfg.Section("status").NewKey("status enabled", "true")
+		cfg.Section("status").NewKey("status type", "online")
+		cfg.Section("status").NewKey("status label", fmt.Sprint(discordgo.GameTypeWatching))
+		cfg.Section("status").NewKey("status suffix", "downloaded pictures")
 		cfg.Section("channels").NewKey("channelid1", "C:\\full\\path\\1")
 		cfg.Section("channels").NewKey("channelid2", "C:\\full\\path\\2")
 		cfg.Section("channels").NewKey("channelid3", "C:\\full\\path\\3")
@@ -122,6 +131,7 @@ func main() {
 		return
 	}
 	if myDB.Use("Downloads") == nil {
+		fmt.Println("Creating new database...")
 		if err := myDB.Create("Downloads"); err != nil {
 			fmt.Println("unable to create db", err)
 			return
@@ -167,8 +177,11 @@ func main() {
 			cfg.Section("auth").Key("password").String())
 	}
 	if err != nil {
-		fmt.Println("error creating Discord session,", err)
-		return
+		// Newer discordgo throws this error for some reason with Email/Password login
+		if err.Error() != "Unable to fetch discord authentication token. <nil>" {
+			fmt.Println("error creating Discord session,", err)
+			return
+		}
 	}
 
 	dg.AddHandler(messageCreate)
@@ -183,6 +196,11 @@ func main() {
 	MaxDownloadRetries = cfg.Section("general").Key("max download retries").MustInt(3)
 	DownloadTimeout = cfg.Section("general").Key("download timeout").MustInt(60)
 	SendNoticesToInteractiveChannels = cfg.Section("general").Key("send notices to interactive channels").MustBool(false)
+
+	StatusEnabled = cfg.Section("status").Key("status enabled").MustBool(true)
+	StatusType = cfg.Section("status").Key("status type").MustString("online")
+	StatusLabel = discordgo.GameType(cfg.Section("status").Key("status label").MustInt(int(discordgo.GameTypeWatching)))
+	StatusSuffix = cfg.Section("status").Key("status suffix").MustString("downloaded pictures")
 
 	// setup google drive client
 	clientCredentialsJson = cfg.Section("google").Key("client credentials json").MustString("")
@@ -204,12 +222,13 @@ func main() {
 			}
 		}
 	}
-
+	dg.LogLevel = -1 // to ignore dumb wsapi error
 	err = dg.Open()
 	if err != nil {
 		fmt.Println("error opening connection,", err)
 		return
 	}
+	dg.LogLevel = 0 // reset
 
 	u, err := dg.User("@me")
 	if err != nil {
@@ -226,7 +245,11 @@ func main() {
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
+	fmt.Println("Closing database...")
 	myDB.Close()
+	fmt.Println("Logging out of Discord...")
+	dg.Close()
+	fmt.Println("Exiting...")
 	return
 }
 
@@ -967,7 +990,7 @@ func startDownload(dUrl string, filename string, path string, channelId string, 
 }
 
 func downloadFromUrl(dUrl string, filename string, path string, channelId string, userId string, fileTime time.Time) bool {
-	err := os.MkdirAll(path, 755)
+	err := os.MkdirAll(path, 0755)
 	if err != nil {
 		fmt.Println("Error while creating folder", path, "-", err)
 		return false
@@ -1040,9 +1063,13 @@ func downloadFromUrl(dUrl string, filename string, path string, channelId string
 		fmt.Printf("[%s] Saving possible duplicate (filenames match): %s to %s\n", time.Now().Format(time.Stamp), tmpPath, completePath)
 	}
 
+	extension := filepath.Ext(filename)
 	contentTypeParts := strings.Split(contentType, "/")
 	if t := contentTypeParts[0]; t != "image" && t != "video" && t != "audio" &&
-		!(t == "application" && isAudioFile(filename)) {
+		!(t == "application" && isAudioFile(filename)) &&
+		strings.ToLower(extension) != ".mov" &&
+		strings.ToLower(extension) != ".mp4" &&
+		strings.ToLower(extension) != ".webm" {
 		fmt.Println("No image, video, or audio found at", dUrl)
 		return true
 	}
