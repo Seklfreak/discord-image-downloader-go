@@ -990,7 +990,17 @@ func startDownload(dUrl string, filename string, path string, channelId string, 
 }
 
 func downloadFromUrl(dUrl string, filename string, path string, channelId string, userId string, fileTime time.Time) bool {
-	err := os.MkdirAll(path, 0755)
+
+	var err error
+
+	// Source validation
+	_, err = url.ParseRequestURI(dUrl)
+	if err != nil {
+		fmt.Println("Error while parsing url", dUrl, "-", err)
+		return false
+	}
+
+	err = os.MkdirAll(path, 0755)
 	if err != nil {
 		fmt.Println("Error while creating folder", path, "-", err)
 		return false
