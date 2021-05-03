@@ -286,6 +286,20 @@ func skipDuplicateLinks(linkList map[string]string, channelID string, interactiv
 }
 
 func handleDiscordMessage(m *discordgo.Message) {
+	// If message content is empty (likely due to userbot/selfbot)
+	if m.Content == "" && len(m.Attachments) == 0 {
+		nms, err := dg.ChannelMessages(m.ChannelID, 10, "", "", "")
+		if err == nil {
+			if len(nms) > 0 {
+				for _, nm := range nms {
+					if nm.ID == m.ID {
+						m = nm
+					}
+				}
+			}
+		}
+	}
+
 	if folderName, ok := ChannelWhitelist[m.ChannelID]; ok {
 		// download from whitelisted channels
 		downloadItems := getDownloadItemsOfMessage(m)
