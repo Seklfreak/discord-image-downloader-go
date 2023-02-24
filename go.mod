@@ -16,7 +16,7 @@ require (
 	github.com/garyburd/go-oauth v0.0.0-20180319155456-bca2e7f09a17 // indirect
 	github.com/hashicorp/go-version v1.1.0
 	github.com/smartystreets/goconvey v0.0.0-20190306220146-200a235640ff // indirect
-	golang.org/x/net v0.0.0-20190322120337-addf6b3196f6
+	golang.org/x/net v0.7.0
 	golang.org/x/oauth2 v0.0.0-20190319182350-c85d3e98c914
 	google.golang.org/api v0.2.0
 	gopkg.in/ini.v1 v1.42.0
