@@ -1,3 +1,7 @@
+# PROJECT ABANDONED, [PLEASE USE FORK.](https://github.com/get-got/discord-downloader-go/)
+
+---
+
 # discord-image-downloader-go
 [<img src="https://img.shields.io/badge/Support-me!-orange.svg">](https://www.paypal.me/swk)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Seklfreak/discord-image-downloader-go)](https://goreportcard.com/report/github.com/Seklfreak/discord-image-downloader-go)
