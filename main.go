@@ -286,6 +286,20 @@ func skipDuplicateLinks(linkList map[string]string, channelID string, interactiv
 }
 
 func handleDiscordMessage(m *discordgo.Message) {
+	// If message content is empty (likely due to userbot/selfbot)
+	if m.Content == "" && len(m.Attachments) == 0 {
+		nms, err := dg.ChannelMessages(m.ChannelID, 10, "", "", "")
+		if err == nil {
+			if len(nms) > 0 {
+				for _, nm := range nms {
+					if nm.ID == m.ID {
+						m = nm
+					}
+				}
+			}
+		}
+	}
+
 	if folderName, ok := ChannelWhitelist[m.ChannelID]; ok {
 		// download from whitelisted channels
 		downloadItems := getDownloadItemsOfMessage(m)
@@ -990,7 +1004,17 @@ func startDownload(dUrl string, filename string, path string, channelId string, 
 }
 
 func downloadFromUrl(dUrl string, filename string, path string, channelId string, userId string, fileTime time.Time) bool {
-	err := os.MkdirAll(path, 0755)
+
+	var err error
+
+	// Source validation
+	_, err = url.ParseRequestURI(dUrl)
+	if err != nil {
+		fmt.Println("Error while parsing url", dUrl, "-", err)
+		return false
+	}
+
+	err = os.MkdirAll(path, 0755)
 	if err != nil {
 		fmt.Println("Error while creating folder", path, "-", err)
 		return false
